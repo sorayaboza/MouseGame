@@ -2,9 +2,9 @@
 #define _INPUTS_H
 
 #include<_common.h>
-#include<_model.h>
 #include<_skybox.h>
 #include<_camera.h>
+#include "_player.h"
 
 class _inputs
 {
@@ -12,7 +12,7 @@ class _inputs
         _inputs();
         virtual ~_inputs();
 
-        void keyPressed(_model*);
+        void keyPressed(_player* player);
         void keyUp();
 
         bool isTranslate;

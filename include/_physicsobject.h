@@ -11,17 +11,16 @@
     - position, velocity, acceleration
     - simple gravity and floor collision
 */
-class _physicsobject
-{
+class _physicsobject {
 public:
     _physicsobject();
     ~_physicsobject();
 
     glm::vec3 pos;        // current position
     glm::vec3 velocity;   // current velocity
-    vec3 acceleration; // forces like gravity
+    glm::vec3 acceleration; // forces like gravity
 
-    void updatePhysics(float dt); // updates position and velocity based on acceleration
+    void updatePhysics(float dt, float floorY); // updates position and velocity based on acceleration
 };
 
 #endif // _PHYSICSOBJECT_H

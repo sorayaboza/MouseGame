@@ -21,9 +21,6 @@
 _modelobj::_modelobj() {
     // Constructor: initialize default values
     buffersInitialized = false;
-    pos = {0,0,0};
-    rot = {0,0,0};
-    modelScale = 1.0f;
 }
 
 _modelobj::~_modelobj() {
@@ -49,7 +46,6 @@ _modelobj::~_modelobj() {
 */
 bool _modelobj::loadOBJ(const std::string& filename, float scale) {
     objFile = filename;
-    modelScale = scale;
 
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
@@ -73,9 +69,9 @@ bool _modelobj::loadOBJ(const std::string& filename, float scale) {
 
             // ---------------- VERTEX POSITION ----------------
             vertices.push_back({
-                attrib.vertices[3*index.vertex_index+0] * modelScale,
-                attrib.vertices[3*index.vertex_index+1] * modelScale,
-                attrib.vertices[3*index.vertex_index+2] * modelScale
+                attrib.vertices[3*index.vertex_index+0] * scale,
+                attrib.vertices[3*index.vertex_index+1] * scale,
+                attrib.vertices[3*index.vertex_index+2] * scale
             });
 
             // ---------------- NORMAL VECTOR ----------------
@@ -161,9 +157,6 @@ void _modelobj::drawModel() {
     if (!buffersInitialized) return;
 
     glPushMatrix(); // Save current matrix so other objects aren’t affected
-
-    glTranslatef(pos.x, pos.y, pos.z); // 1. Move the model to its world position
-    glRotatef(rot.y, 0, 1, 0); // 2. Rotate the model around Y-axis so it faces movement direction
 
     // 3. Draw the model geometry
     glBindVertexArray(vao);

@@ -20,12 +20,7 @@ public:
     ~_modelobj();
 
     bool loadOBJ(const std::string& filename, float scale = 1.0f); // load the OBJ file
-    virtual void drawModel();   // Model render. virtual so subclasses can override
-
-    glm::vec3 pos;        // current position of the model in world space
-    glm::vec3 rot;        // rotation (Euler angles) of the model
-    float modelScale;     // scale factor applied during loading
-
+    void drawModel();   // Model render.
 private:
     std::vector<glm::vec3> vertices;
     std::vector<glm::vec3> normals;

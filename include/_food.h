@@ -4,6 +4,7 @@
 #include "_physicsobject.h"
 #include "_modelobj.h"
 #include <string>
+#include <glm/glm.hpp>
 
 /*
     Represents a food item in the game.
@@ -25,6 +26,8 @@ public:
 
     void update(float dt, float floorY);  // update physics
     void draw();                          // draw model
+
+    glm::vec3 rot;
 };
 
 #endif // _FOOD_H

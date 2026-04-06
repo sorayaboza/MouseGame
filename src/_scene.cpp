@@ -1,7 +1,6 @@
 #include "_scene.h"
 #include <vector>
 #include <cstdlib> // for rand()
-#include "_modelrat.h"
 #include <cmath>
 
 float slideFriction = 0.95f; // Friction of the objects
@@ -20,13 +19,10 @@ float scale = 1.0f; // Scale of objects
 */
 _Scene::_Scene() { // ctor
     myLight = new _lighting();
-    myModel = new _model();
     keyMS = new _inputs();
     myTex = new _texLoader();
     sky = new _skyBox();
     cam = new _camera();
-
-    playerModel = nullptr;
     mouseHoleRadius = 4.0f;
 }
 
@@ -101,8 +97,9 @@ GLint _Scene::initGL() {
 
     // ---------- INITIALIZE PLAYER MODEL ----------
     // Load the rat OBJ model that the player controls.
-    playerModel = new _modelRat("models/player.obj", scale); // scale = 1.0
-    playerModel->pos = {0, floorY, 0};  // Starting position on the floor
+    player = new _player();
+    player->init("models/player.obj", 1.0f);
+    player->physics.pos = {0, floorY, 0};
 
     // --- SETTING WHERE THE HOLE IS ---
     // Bottom-left corner of the back face
@@ -182,7 +179,7 @@ void _Scene::drawScene() {
     handleCollisions();       // Food-to-food collisions
     handlePlayerCollisions(); // Food-to-player collisions
     checkFoodInHole();
-    playerModel->drawModel(); // Draw the rat model
+    player->draw(); // Draw the rat model
 
     // --- DEBUG: Draw mouse hole marker ---
     glPushMatrix();
@@ -214,21 +211,21 @@ void _Scene::updatePlayer(float dt) {
         moveVec = glm::normalize(moveVec) * speed;
 
     // Apply movement
-    playerModel->pos += moveVec;
+    player->physics.pos += moveVec;
 
     // Rotate the rat so it faces the direction it moves
     if (glm::length(moveVec) > 0.0f) {
-        playerModel->rot.y = glm::degrees(atan2(moveVec.x, moveVec.z));
+        player->rot.y = glm::degrees(atan2(moveVec.x, moveVec.z));
     }
 
     // Sky box boundary: Prevents player from leaving the skybox
     float halfX = sky->scale.x * 0.47f;
     float halfZ = sky->scale.z * 0.47f;
 
-    if (playerModel->pos.x < -halfX) playerModel->pos.x = -halfX;
-    if (playerModel->pos.x > halfX) playerModel->pos.x = halfX;
-    if (playerModel->pos.z < -halfZ) playerModel->pos.z = -halfZ;
-    if (playerModel->pos.z > halfZ) playerModel->pos.z = halfZ;
+    if (player->physics.pos.x < -halfX) player->physics.pos.x = -halfX;
+    if (player->physics.pos.x > halfX)  player->physics.pos.x = halfX;
+    if (player->physics.pos.z < -halfZ) player->physics.pos.z = -halfZ;
+    if (player->physics.pos.z > halfZ)  player->physics.pos.z = halfZ;
 }
 
 /* handleCollisions()
@@ -332,9 +329,9 @@ void _Scene::handlePlayerCollisions() {
     for (auto& food : foods) {
 
         // Vector from player to food
-        float dx = food->physics.pos.x - playerModel->pos.x;
+        float dx = food->physics.pos.x - player->physics.pos.x;
         float dy = 0.0f; // Keeps food ground-based
-        float dz = food->physics.pos.z - playerModel->pos.z;
+        float dz = food->physics.pos.z - player->physics.pos.z;
 
         float dist = sqrt(dx*dx + dy*dy + dz*dz);
         float minDist = radius * 2.0f;

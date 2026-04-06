@@ -10,23 +10,17 @@ _physicsobject::_physicsobject() { //ctor
 
 _physicsobject::~_physicsobject() { /*dtor*/ }
 
-void _physicsobject::updatePhysics(float dt) {
-    // Update velocity
-    velocity.x += acceleration.x * dt;
-    velocity.y += acceleration.y * dt;
-    velocity.z += acceleration.z * dt;
-
-    // Update position
-    pos.x += velocity.x * dt;
-    pos.y += velocity.y * dt;
-    pos.z += velocity.z * dt;
+void _physicsobject::updatePhysics(float dt, float floorY) {
+    // Update velocity and position
+    velocity += acceleration * dt;
+    pos += velocity * dt;
 
     // Floor collision
-    if(pos.y <= 0.0f)
-    {
-        pos.y = 0.0f;         // clamp to floor
-        velocity.y *= -0.5f;  // bounce
-        if(fabs(velocity.y) < 0.01f)
-            velocity.y = 0.0f; // stop tiny oscillations
+    if (pos.y <= floorY) {
+        pos.y = floorY;
+        velocity.y *= -0.5f;
+
+        if (fabs(velocity.y) < 0.01f)
+            velocity.y = 0.0f;
     }
 }

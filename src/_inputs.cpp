@@ -7,7 +7,7 @@ _inputs::_inputs() { //ctor
 
 _inputs::~_inputs() { /*dtor*/ }
 
-void _inputs::keyPressed(_model* mdl) {
+void _inputs::keyPressed(_player* player) {
     float moveSpeed = 8.0f;
 
     // movement vector
@@ -23,8 +23,11 @@ void _inputs::keyPressed(_model* mdl) {
         dx = dx / len * moveSpeed;
         dz = dz / len * moveSpeed;
 
-        mdl->pos.x += dx;
-        mdl->pos.z += dz;
+        player->physics.pos.x += dx;
+        player->physics.pos.z += dz;
+
+        // rotate player toward movement direction
+        player->rot.y = atan2(dx, dz) * 180.0f / 3.14159f;
     }
 }
 

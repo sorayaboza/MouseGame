@@ -3,14 +3,13 @@
 
 #include<_common.h>
 #include<_lighting.h>
-#include<_model.h>
 #include<_inputs.h>
 #include<_texloader.h>
 #include<_skybox.h>
 #include<_camera.h>
 #include <vector>
-#include "_modelRat.h"
 #include "_food.h"
+#include "_player.h"
 
 class _Scene
 {
@@ -33,13 +32,12 @@ class _Scene
         void checkFoodInHole();
 
         _lighting* myLight;
-        _model* myModel;
         _inputs* keyMS;
         _texLoader* myTex;
         _skyBox* sky;
         _camera* cam;
+        _player* player;
 
-        _modelRat* playerModel; // new controllable sphere
         std::vector<_food*> foods;   // all falling foods
 
         glm::vec3 mouseHolePos;   // position of the mouse hole in world coordinates
