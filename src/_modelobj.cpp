@@ -86,13 +86,21 @@ bool _modelobj::loadOBJ(const std::string& filename, float scale) {
             }
 
             // ---------------- TEXTURE COORDINATES ----------------
-            if (!attrib.texcoords.empty()) {
+            if (!attrib.texcoords.empty() &&
+                index.texcoord_index >= 0 &&
+                (2 * index.texcoord_index + 1) < attrib.texcoords.size())
+            {
                 uvs.push_back({
                     attrib.texcoords[2*index.texcoord_index+0],
                     attrib.texcoords[2*index.texcoord_index+1]
                 });
-            } else {
-                uvs.push_back({0,0}); // Default UV
+            }
+            else {
+                uvs.push_back({0.0f, 0.0f}); // safe fallback
+            }
+            if (index.texcoord_index < 0 ||
+                (2 * index.texcoord_index + 1) >= attrib.texcoords.size()) {
+                std::cout << "BAD UV INDEX in " << filename << std::endl;
             }
 
             // ---------------- ELEMENT BUFFER ----------------
@@ -104,7 +112,7 @@ bool _modelobj::loadOBJ(const std::string& filename, float scale) {
     setupBuffers();
 
     // Center and scale model so it fits the scene
-    normalizeModel();
+    normalizeModel(1.0f); // 1.0f to keep consistent model size
 
     return true;
 }
@@ -126,28 +134,34 @@ void _modelobj::setupBuffers() {
     glGenBuffers(1, &vboVertices);
     glBindBuffer(GL_ARRAY_BUFFER, vboVertices);
     glBufferData(GL_ARRAY_BUFFER, vertices.size()*sizeof(glm::vec3), vertices.data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,0,(void*)0);
-    glEnableVertexAttribArray(0);
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(3, GL_FLOAT, 0, 0);
 
     // -------- NORMAL BUFFER --------
     glGenBuffers(1, &vboNormals);
     glBindBuffer(GL_ARRAY_BUFFER, vboNormals);
     glBufferData(GL_ARRAY_BUFFER, normals.size()*sizeof(glm::vec3), normals.data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,0,(void*)0);
-    glEnableVertexAttribArray(1);
+
+    glEnableClientState(GL_NORMAL_ARRAY);
+    glNormalPointer(GL_FLOAT, 0, 0);
 
     // -------- TEXTURE COORDINATE BUFFER --------
     glGenBuffers(1, &vboUVs);
     glBindBuffer(GL_ARRAY_BUFFER, vboUVs);
     glBufferData(GL_ARRAY_BUFFER, uvs.size()*sizeof(glm::vec2), uvs.data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(2,2,GL_FLOAT,GL_FALSE,0,(void*)0);
-    glEnableVertexAttribArray(2);
+
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vboUVs); // bind before setting pointer
+    glTexCoordPointer(2, GL_FLOAT, 0, (void*)0);
 
     // -------- ELEMENT BUFFER --------
     glGenBuffers(1, &ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size()*sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0); // Unbind VAO
     buffersInitialized = true;
 }
@@ -160,6 +174,9 @@ void _modelobj::drawModel() {
 
     // 3. Draw the model geometry
     glBindVertexArray(vao);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_NORMAL_ARRAY);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 

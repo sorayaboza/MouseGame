@@ -4,6 +4,7 @@
 #include "_modelobj.h"
 #include "_physicsobject.h"
 #include <glm/glm.hpp>
+#include <_texloader.h>
 
 /* Represents the player (rat) in the game.
 
@@ -19,6 +20,8 @@ public:
 
     _modelobj model;          // Handles loading and drawing the OBJ model
     _physicsobject physics;   // Handles position, velocity, and movement
+    _texLoader texture; // texture for the rat model
+
     glm::vec3 rot;            // Stores rotation (mainly Y for facing direction)
 
     void init(const std::string& modelPath, float scale); // Loads the player model

@@ -28,6 +28,7 @@ _player::~_player() { /*dtor*/ }
 */
 void _player::init(const std::string& modelPath, float scale) {
     model.loadOBJ(modelPath, scale);
+    texture.loadTexture((char*)"images/mouse.png"); // Load rat texture
 }
 
 /* draw()
@@ -41,12 +42,16 @@ void _player::init(const std::string& modelPath, float scale) {
 */
 void _player::draw() {
     glPushMatrix(); // Save current transformation state
+        texture.BindTex();                 // bind player texture
+        // Move player to its position in the world
+        glTranslatef(physics.pos.x, physics.pos.y, physics.pos.z);
+        glRotatef(rot.y, 0, 1, 0); // Rotate player around Y-axis (facing direction)
 
-    // Move player to its position in the world
-    glTranslatef(physics.pos.x, physics.pos.y, physics.pos.z);
+        glEnable(GL_TEXTURE_2D);           // ensure textures enabled
+        glColor3f(1.0f, 1.0f, 1.0f);       // prevent tinting
 
-    glRotatef(rot.y, 0, 1, 0); // Rotate player around Y-axis (facing direction)
-    model.drawModel(); // Draw the OBJ model
+        model.drawModel();   // draw model with UVs
 
+        glBindTexture(GL_TEXTURE_2D, 0); // reset texture
     glPopMatrix(); // Restore previous transformation state
 }

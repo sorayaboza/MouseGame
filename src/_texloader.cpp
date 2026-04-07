@@ -4,7 +4,7 @@ _texLoader::_texLoader() { /*ctor*/ }
 
 _texLoader::~_texLoader() { /*dtor*/ }
 
-void _texLoader::loadTexture(char* fileName) {
+void _texLoader::loadTexture(const char* fileName) {
     glGenTextures(1,&texID);      // create handle
     glBindTexture(GL_TEXTURE_2D,texID); // bind handle to buffer
 
@@ -15,10 +15,10 @@ void _texLoader::loadTexture(char* fileName) {
     SOIL_free_image_data(image);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-     glBindTexture(GL_TEXTURE_2D,0); // bind handle to buffer
+    glBindTexture(GL_TEXTURE_2D,0); // bind handle to buffer
 }
 
 void _texLoader::BindTex() {

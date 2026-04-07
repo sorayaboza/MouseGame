@@ -5,6 +5,7 @@
 #include "_modelobj.h"
 #include <string>
 #include <glm/glm.hpp>
+#include <_texloader.h>
 
 /*
     Represents a food item in the game.
@@ -20,6 +21,7 @@ public:
 
     _physicsobject physics; // physics for position/velocity
     _modelobj model;        // 3D model
+    _texLoader texture;     // 3d model texture
 
     float modelScale;       // scale of the visual model
     float collisionRadius;  // radius used for collision detection

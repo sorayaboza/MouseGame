@@ -9,11 +9,11 @@ class _texLoader
     public:
         _texLoader();
         virtual ~_texLoader();
-        int width,height; //keep track of image dementions
+        int width,height; // keep track of image dimensions
         unsigned char* image;
         GLuint texID;
 
-        void loadTexture(char *);
+        void loadTexture(const char*);
         void BindTex();
 
     protected:

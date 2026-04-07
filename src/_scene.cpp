@@ -56,11 +56,16 @@ GLint _Scene::initGL() {
     int numFoods = 10;      // number of foods to spawn
 
     // List of possible food models
-    std::vector<std::string> foodModels = {
-        "models/banana.obj",
-        "models/cheese.obj",
-        "models/melon.obj",
-        "models/donut.obj"
+    struct FoodType {
+        std::string model;
+        std::string texture;
+        float scale;
+    };
+
+    std::vector<FoodType> foodTypes = {
+        {"models/cheese.obj", "images/cheese.png", 0.8f},
+        {"models/melon.obj",  "images/wmelon.png",  1.8f},
+        {"models/donut.obj",  "images/donut.png",  1.2f}
     };
 
     // Determine playable boundaries from sky box size
@@ -76,15 +81,9 @@ GLint _Scene::initGL() {
     float halfZ = sky->scale.z * 0.5f; // full half-depth
 
     for(int i=0; i<numFoods; i++) {
-        std::string modelPath = foodModels[rand() % foodModels.size()]; // Pick a random food model
-        float scale_add = 0.0f;
-
-        if (modelPath == "models/banana.obj") scale = (0.3f + scale_add);
-        if (modelPath == "models/cheese.obj") scale = (0.8f + scale_add);
-        if (modelPath == "models/melon.obj") scale = (1.8f + scale_add);
-        if (modelPath == "models/donut.obj") scale = (1.2f + scale_add);
-
-        _food* newFood = new _food(modelPath, scale);
+        FoodType type = foodTypes[rand() % foodTypes.size()];
+        _food* newFood = new _food(type.model, type.scale);
+        newFood->texture.loadTexture((char*)type.texture.c_str()); // Load correct texture
 
         newFood->physics.pos.x = ((rand()%100)/100.0f)*(2*halfX)-halfX; // Random X position inside sky box bounds
         newFood->physics.pos.z = ((rand()%100)/100.0f)*(2*halfZ)-halfZ; // Random Z position inside sky box bounds
@@ -183,9 +182,11 @@ void _Scene::drawScene() {
 
     // --- DEBUG: Draw mouse hole marker ---
     glPushMatrix();
-    glTranslatef(mouseHolePos.x, mouseHolePos.y, mouseHolePos.z); // Move to hole position
-    glColor3f(1.0f, 0.0f, 0.0f); // Red cube
-    glutSolidCube(1.0f);          // 1 unit cube for visibility
+        glDisable(GL_TEXTURE_2D);
+        glTranslatef(mouseHolePos.x, mouseHolePos.y, mouseHolePos.z); // Move to hole position
+        glColor3f(1.0f, 0.0f, 0.0f); // Red cube
+        glutSolidCube(1.0f);          // 1 unit cube for visibility
+        glEnable(GL_TEXTURE_2D);
     glPopMatrix();
 
 }
