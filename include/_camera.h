@@ -26,6 +26,13 @@ class _camera
 
         void setUpCamera(); // call setting in the display
 
+        bool isRightMouseDown = false;
+        int lastMouseX = 0;
+        int lastMouseY = 0;
+
+        float yaw = 0.0f;   // left/right rotation
+        float pitch = 20.0f; // up/down tilt (start slightly tilted)
+
     protected:
 
     private:

@@ -2,8 +2,9 @@
 #include <vector>
 #include <cstdlib> // for rand()
 #include <cmath>
+#include <windows.h>
 
-float slideFriction = 0.95f; // Friction of the objects
+float slideFriction = 0.99f; // Friction of the objects
 glm::vec3 playerMoveDir;
 int score = 0;
 float scale = 1.0f; // Scale of objects
@@ -140,10 +141,6 @@ void _Scene::checkFoodInHole() {
 
         // If food is inside hole
         if (dist < mouseHoleRadius) {
-            // If this food is currently held, release it
-            if (food == heldFood) {
-                heldFood = nullptr;
-            }
             // Food has entered the hole!
             foods.erase(foods.begin() + i); // 1. Remove from the foods vector
             delete food; // 2. Delete the food object
@@ -175,9 +172,15 @@ void _Scene::drawScene() {
     cam->des.y = player->physics.pos.y;
     cam->des.z = player->physics.pos.z;
 
-    cam->eye.x = cam->des.x + offset.x;
-    cam->eye.y = cam->des.y + offset.y;
-    cam->eye.z = cam->des.z + offset.z;
+    float distance = 40.0f; // how far camera stays from player
+
+    float radYaw = glm::radians(cam->yaw);
+    float radPitch = glm::radians(cam->pitch);
+
+    // Orbit around player
+    cam->eye.x = cam->des.x + distance * cos(radPitch) * sin(radYaw);
+    cam->eye.y = cam->des.y + distance * sin(radPitch);
+    cam->eye.z = cam->des.z + distance * cos(radPitch) * cos(radYaw);
 
     cam->setUpCamera();  // Set camera position and orientation
     sky->drawBox(); // Draw sky box
@@ -212,22 +215,28 @@ void _Scene::drawScene() {
 void _Scene::updatePlayer(float dt) {
     float speed = 20.0f * dt; // Player movement speed scaled by frame time
 
-    // Compute movement vector
     glm::vec3 moveVec(0.0f);
-    if (GetAsyncKeyState('W') & 0x8000) moveVec.z -= 1.0f;
-    if (GetAsyncKeyState('S') & 0x8000) moveVec.z += 1.0f;
-    if (GetAsyncKeyState('A') & 0x8000) moveVec.x -= 1.0f;
-    if (GetAsyncKeyState('D') & 0x8000) moveVec.x += 1.0f;
 
-    if (GetAsyncKeyState(VK_SPACE) & 0x8000) {
-        heldFood = nullptr; // release food
-    }
+    // Camera forward (from eye --> target)
+    glm::vec3 camForward = glm::normalize(glm::vec3(
+        cam->des.x - cam->eye.x,
+        0.0f, // ignore vertical
+        cam->des.z - cam->eye.z
+    ));
+
+    // Camera right (perpendicular)
+    glm::vec3 camRight = glm::normalize(glm::cross(camForward, glm::vec3(0,1,0)));
+
+    // WASD relative to camera
+    if (GetAsyncKeyState('W') & 0x8000) moveVec += camForward;
+    if (GetAsyncKeyState('S') & 0x8000) moveVec -= camForward;
+    if (GetAsyncKeyState('A') & 0x8000) moveVec -= camRight;
+    if (GetAsyncKeyState('D') & 0x8000) moveVec += camRight;
 
     // Save movement direction for pushing
     if (glm::length(moveVec) > 0.0f) {
         playerMoveDir = glm::normalize(moveVec);
     }
-
 
     // Normalize so diagonal isn't faster
     if (glm::length(moveVec) > 0.0f)
@@ -319,7 +328,7 @@ void _Scene::handleCollisions() {
                     continue;
 
                 // Coefficient of restitution (bounciness)
-                float bounce = 0.6f;
+                float bounce = 1.0f;
 
                 // Calculate collision impulse
                 float impulse = -(1 + bounce) * velAlongNormal;
@@ -360,25 +369,6 @@ void _Scene::handlePlayerCollisions() {
         float minDist = radius * 2.0f;
 
         if (dist < minDist && dist > 0.0001f) {
-            // If player is not holding anything, grab this food
-            if (heldFood == nullptr) {
-                heldFood = food;
-            }
-
-            // If this food is being held, snap it in front of player
-            if (food == heldFood) {
-                float holdDistance = 3.0f; // how far in front of player
-
-                food->physics.pos.x = player->physics.pos.x + playerMoveDir.x * holdDistance;
-                food->physics.pos.z = player->physics.pos.z + playerMoveDir.z * holdDistance;
-                food->physics.pos.y = player->physics.pos.y;
-
-                // Stop physics while held
-                food->physics.velocity = {0,0,0};
-
-                continue; // skip normal collision behavior
-            }
-
             // Normalize push direction
             float nx = dx / dist;
             float ny = dy / dist;
@@ -396,39 +386,96 @@ void _Scene::handlePlayerCollisions() {
 
             food->physics.velocity.x += playerMoveDir.x * pushStrength;
             food->physics.velocity.z += playerMoveDir.z * pushStrength;
-
-            // Small assist so food stays in front of the rat while pushing
-            float stickStrength = 0.5f;
-
-            // Move food slightly toward the rat's forward line
-            food->physics.pos.x += playerMoveDir.x * stickStrength;
-            food->physics.pos.z += playerMoveDir.z * stickStrength;
-            // Reduce sideways sliding when pushing
-            food->physics.velocity.x *= 0.9f;
-            food->physics.velocity.z *= 0.9f;
         }
 
         // Sky box boundary: Keeps food inside the world
         if (food->physics.pos.x - foodRadius < -halfX) {
             food->physics.pos.x = -halfX + foodRadius;
-            food->physics.velocity.x *= -0.5f;
+            food->physics.velocity.x *= -0.9f;
         }
         if (food->physics.pos.x + foodRadius > halfX) {
             food->physics.pos.x = halfX - foodRadius;
-            food->physics.velocity.x *= -0.5f;
+            food->physics.velocity.x *= -0.9f;
         }
         if (food->physics.pos.z - foodRadius < -halfZ) {
             food->physics.pos.z = -halfZ + foodRadius;
-            food->physics.velocity.z *= -0.5f;
+            food->physics.velocity.z *= -0.9f;
         }
         if (food->physics.pos.z + foodRadius > halfZ) {
             food->physics.pos.z = halfZ - foodRadius;
-            food->physics.velocity.z *= -0.5f;
+            food->physics.velocity.z *= -0.9f;
         }
     }
 }
 
 void _Scene::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    switch(uMsg) { break; }
-}
+    switch(uMsg) {
 
+    case WM_RBUTTONDOWN:
+    {
+        cam->isRightMouseDown = true;
+
+        // Hide cursor
+        ShowCursor(FALSE);
+
+        // Lock cursor to window
+        RECT rect;
+        GetClientRect(hWnd, &rect);
+
+        POINT ul = {rect.left, rect.top};
+        POINT lr = {rect.right, rect.bottom};
+
+        ClientToScreen(hWnd, &ul);
+        ClientToScreen(hWnd, &lr);
+
+        rect.left = ul.x;
+        rect.top = ul.y;
+        rect.right = lr.x;
+        rect.bottom = lr.y;
+
+        ClipCursor(&rect);
+
+        // Center cursor
+        int centerX = (rect.left + rect.right) / 2;
+        int centerY = (rect.top + rect.bottom) / 2;
+        SetCursorPos(centerX, centerY);
+
+        cam->lastMouseX = centerX;
+        cam->lastMouseY = centerY;
+    }
+    break;
+
+    case WM_RBUTTONUP:
+        cam->isRightMouseDown = false;
+
+        // Show cursor again
+        ShowCursor(TRUE);
+
+        // Release cursor lock
+        ClipCursor(NULL);
+    break;
+
+    case WM_MOUSEMOVE:
+    {
+        if (cam->isRightMouseDown) {
+
+            POINT p;
+            GetCursorPos(&p);
+
+            int dx = p.x - cam->lastMouseX;
+            int dy = p.y - cam->lastMouseY;
+
+            cam->yaw   -= dx * 0.3f; // (your fixed direction)
+            cam->pitch += dy * 0.3f;
+
+            // Clamp pitch
+            if (cam->pitch > 80.0f) cam->pitch = 80.0f;
+            if (cam->pitch < 5.0f)  cam->pitch = 5.0f;
+
+            // Re-center cursor EVERY FRAME
+            SetCursorPos(cam->lastMouseX, cam->lastMouseY);
+        }
+    }
+    break;
+    }
+}
