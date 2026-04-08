@@ -37,6 +37,7 @@ class _Scene
         _skyBox* sky;
         _camera* cam;
         _player* player;
+        _food* heldFood = nullptr;
 
         std::vector<_food*> foods;   // all falling foods
 

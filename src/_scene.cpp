@@ -64,7 +64,6 @@ GLint _Scene::initGL() {
 
     std::vector<FoodType> foodTypes = {
         {"models/cheese.obj", "images/cheese.png", 0.8f},
-        {"models/melon.obj",  "images/wmelon.png",  1.8f},
         {"models/donut.obj",  "images/donut.png",  1.2f}
     };
 
@@ -141,6 +140,10 @@ void _Scene::checkFoodInHole() {
 
         // If food is inside hole
         if (dist < mouseHoleRadius) {
+            // If this food is currently held, release it
+            if (food == heldFood) {
+                heldFood = nullptr;
+            }
             // Food has entered the hole!
             foods.erase(foods.begin() + i); // 1. Remove from the foods vector
             delete food; // 2. Delete the food object
@@ -160,6 +163,21 @@ void _Scene::drawScene() {
     // Clear color and depth buffers for new frame
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
+
+    glm::vec3 offset = {
+        cam->eye.x - cam->des.x,
+        cam->eye.y - cam->des.y,
+        cam->eye.z - cam->des.z
+    };
+
+    // Move camera to follow player (isometric style)
+    cam->des.x = player->physics.pos.x;
+    cam->des.y = player->physics.pos.y;
+    cam->des.z = player->physics.pos.z;
+
+    cam->eye.x = cam->des.x + offset.x;
+    cam->eye.y = cam->des.y + offset.y;
+    cam->eye.z = cam->des.z + offset.z;
 
     cam->setUpCamera();  // Set camera position and orientation
     sky->drawBox(); // Draw sky box
@@ -200,6 +218,10 @@ void _Scene::updatePlayer(float dt) {
     if (GetAsyncKeyState('S') & 0x8000) moveVec.z += 1.0f;
     if (GetAsyncKeyState('A') & 0x8000) moveVec.x -= 1.0f;
     if (GetAsyncKeyState('D') & 0x8000) moveVec.x += 1.0f;
+
+    if (GetAsyncKeyState(VK_SPACE) & 0x8000) {
+        heldFood = nullptr; // release food
+    }
 
     // Save movement direction for pushing
     if (glm::length(moveVec) > 0.0f) {
@@ -338,6 +360,24 @@ void _Scene::handlePlayerCollisions() {
         float minDist = radius * 2.0f;
 
         if (dist < minDist && dist > 0.0001f) {
+            // If player is not holding anything, grab this food
+            if (heldFood == nullptr) {
+                heldFood = food;
+            }
+
+            // If this food is being held, snap it in front of player
+            if (food == heldFood) {
+                float holdDistance = 3.0f; // how far in front of player
+
+                food->physics.pos.x = player->physics.pos.x + playerMoveDir.x * holdDistance;
+                food->physics.pos.z = player->physics.pos.z + playerMoveDir.z * holdDistance;
+                food->physics.pos.y = player->physics.pos.y;
+
+                // Stop physics while held
+                food->physics.velocity = {0,0,0};
+
+                continue; // skip normal collision behavior
+            }
 
             // Normalize push direction
             float nx = dx / dist;

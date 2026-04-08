@@ -1,13 +1,19 @@
 #include "_camera.h"
 
-_camera::_camera() { //ctor
-    // {eye.x, eye.y, eye.z}
-    eye = {0,50,0}; // eye.z sets the camera up and down
-    des = {0,0,0};
-    up = {0,0,-1};
+_camera::_camera() {
+    // Slight tilt instead of straight top-down
+    eye = {0, 30, 30};   // tilted toward +Z
+
+    des = {0, 0, 0};     // look at center
+
+    up = {0, 1, 0};      // correct up direction
+
     step = 0.5;
     theta = {0,0};
-    distance = sqrt(pow(eye.x-des.x,2)+pow(eye.y-des.y,2)+pow(eye.z-des.z,2));
+
+    distance = sqrt(pow(eye.x-des.x,2)+
+                    pow(eye.y-des.y,2)+
+                    pow(eye.z-des.z,2));
 }
 
 _camera::~_camera() { /*dtor*/ }
