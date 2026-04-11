@@ -6,12 +6,17 @@
 #  include <windows.h>
 #endif
 
+#include <chrono>
+
 #pragma comment(lib, "opengl32.lib")
 #pragma comment(lib, "glu32.lib")
 
 #include <_scene.h>  // all the headers will be included in _common
 
 using namespace std;
+
+using clock_type = std::chrono::high_resolution_clock;
+auto lastTime = clock_type::now();
 
 HDC		hDC=NULL;	    // Private GDI Device Context
 HGLRC		hRC=NULL;	// Permanent Rendering Context
@@ -364,8 +369,15 @@ int WINAPI WinMain(
 			}
 			else				        // Not Time To Quit, Update Screen
 			{
-			    //myScene->updateScene();
-			    myScene->drawScene();
+			    auto currentTime = clock_type::now();
+                float dt = std::chrono::duration<float>(currentTime - lastTime).count();
+                lastTime = currentTime;
+
+                // Optional safety clamp (prevents huge jumps)
+                if (dt > 0.05f) dt = 0.05f;
+
+                myScene->updateScene(dt);
+                myScene->drawScene();
 				SwapBuffers(hDC);	    // Swap Buffers (Double Buffering)
 			}
 

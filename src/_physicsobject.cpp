@@ -5,7 +5,7 @@
 _physicsobject::_physicsobject() { //ctor
     pos = {0,0,0};
     velocity = {0,0,0};
-    acceleration = {0,-15.0f,0}; // gravity
+    acceleration = {0,-40.0f,0}; // gravity
 }
 
 _physicsobject::~_physicsobject() { /*dtor*/ }

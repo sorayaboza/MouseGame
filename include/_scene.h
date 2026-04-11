@@ -20,6 +20,7 @@ class _Scene
         GLint initGL();    // Initializing my game objects and opengl
         void reSize(GLint,GLint); //window resizing
         void drawScene();  //rendering the scene
+        void updateScene(float dt);
         void WndProc(
               HWND	hWnd,			// Handle For This Window
 			  UINT	uMsg,			// Message For This Window
@@ -29,7 +30,7 @@ class _Scene
 
         void handlePlayerCollisions(); // melon-player collision
         void updatePlayer(float dt);
-        void checkFoodInHole();
+        void checkFoodInHole(float dt);
 
         _lighting* myLight;
         _inputs* keyMS;

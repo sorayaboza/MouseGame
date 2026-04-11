@@ -106,7 +106,6 @@ GLint _Scene::initGL() {
     mouseHolePos.y = floorY;
     mouseHolePos.z = -halfZ; // back face
 
-
     return true;
 }
 
@@ -127,7 +126,10 @@ void _Scene::reSize(GLint width, GLint height) {
 }
 
 // Detects collision with food and mouse hole.
-void _Scene::checkFoodInHole() {
+void _Scene::checkFoodInHole(float dt) {
+    float magnetRadius = 30.0f;   // how far the magnet reaches
+    float magnetStrength = 70.0f; // how strong the pull is
+
     for (size_t i = 0; i < foods.size(); /* no i++ here */) {
         _food* food = foods[i];
 
@@ -152,6 +154,18 @@ void _Scene::checkFoodInHole() {
         }
 
         i++; // Only increment if food wasn't removed
+
+        if (dist < magnetRadius && dist > 0.001f) {
+            float nx = -dx / dist; // direction TOWARD hole
+            float nz = -dz / dist;
+
+            // stronger when closer (feels nice)
+            float strength = magnetStrength * (1.0f - (dist / magnetRadius));
+
+            // apply pull
+            food->physics.velocity.x += nx * strength * dt;
+            food->physics.velocity.z += nz * strength * dt;
+        }
     }
 }
 
@@ -172,7 +186,7 @@ void _Scene::drawScene() {
     cam->des.y = player->physics.pos.y;
     cam->des.z = player->physics.pos.z;
 
-    float distance = 40.0f; // how far camera stays from player
+    float distance = 30.0f; // how far camera stays from player
 
     float radYaw = glm::radians(cam->yaw);
     float radPitch = glm::radians(cam->pitch);
@@ -182,6 +196,22 @@ void _Scene::drawScene() {
     cam->eye.y = cam->des.y + distance * sin(radPitch);
     cam->eye.z = cam->des.z + distance * cos(radPitch) * cos(radYaw);
 
+    // --- CAMERA WALL COLLISION ---
+    float halfX = sky->scale.x * 0.48f;
+    float halfZ = sky->scale.z * 0.48f;
+
+    // Clamp camera inside bounds (slide effect happens naturally)
+    if (cam->eye.x < -halfX) cam->eye.x = -halfX;
+    if (cam->eye.x >  halfX) cam->eye.x =  halfX;
+
+    if (cam->eye.z < -halfZ) cam->eye.z = -halfZ;
+    if (cam->eye.z >  halfZ) cam->eye.z =  halfZ;
+
+    float minHeight = 10.0f;
+    if (cam->eye.y < minHeight) {
+        cam->eye.y = minHeight;
+    }
+
     cam->setUpCamera();  // Set camera position and orientation
     sky->drawBox(); // Draw sky box
 
@@ -189,16 +219,11 @@ void _Scene::drawScene() {
 
     // Update physics and render/draw each food
     for (auto& food : foods) {
-        food->update(0.016f, floorY); // pass floor
-        food->physics.velocity.x *= slideFriction;
-        food->physics.velocity.z *= slideFriction;
         food->draw();
     }
 
-    updatePlayer(0.016f); // Assume ~60 fps
     handleCollisions();       // Food-to-food collisions
     handlePlayerCollisions(); // Food-to-player collisions
-    checkFoodInHole();
     player->draw(); // Draw the rat model
 
     // --- DEBUG: Draw mouse hole marker ---
@@ -213,7 +238,7 @@ void _Scene::drawScene() {
 }
 
 void _Scene::updatePlayer(float dt) {
-    float speed = 20.0f * dt; // Player movement speed scaled by frame time
+    float speed = 35.0f * dt; // Player movement speed scaled by frame time
 
     glm::vec3 moveVec(0.0f);
 
@@ -405,7 +430,68 @@ void _Scene::handlePlayerCollisions() {
             food->physics.pos.z = halfZ - foodRadius;
             food->physics.velocity.z *= -0.9f;
         }
+
+        float cornerRadius = 6.0f;
+
+        glm::vec3 corners[4] = {
+            { -halfX, 0, -halfZ },
+            {  halfX, 0, -halfZ },
+            { -halfX, 0,  halfZ },
+            {  halfX, 0,  halfZ }
+        };
+
+        for (int i = 0; i < 4; i++) {
+            float dx = food->physics.pos.x - corners[i].x;
+            float dz = food->physics.pos.z - corners[i].z;
+
+            float dist = sqrt(dx*dx + dz*dz);
+
+            if (dist < cornerRadius && dist > 0.0001f) {
+                float nx = dx / dist;
+                float nz = dz / dist;
+
+                float overlap = cornerRadius - dist;
+
+                // push out
+                food->physics.pos.x += nx * overlap;
+                food->physics.pos.z += nz * overlap;
+
+                // bounce
+                float bounce = 0.6f;
+                float dot = food->physics.velocity.x * nx + food->physics.velocity.z * nz;
+
+                if (dot < 0) {
+                    food->physics.velocity.x -= (1 + bounce) * dot * nx;
+                    food->physics.velocity.z -= (1 + bounce) * dot * nz;
+                }
+            }
+        }
     }
+
+    float cornerRadius = 6.0f; // tweak this
+
+    // 4 corners
+    glm::vec3 corners[4] = {
+        { -halfX, 0, -halfZ },
+        {  halfX, 0, -halfZ },
+        { -halfX, 0,  halfZ },
+        {  halfX, 0,  halfZ }
+    };
+}
+
+void _Scene::updateScene(float dt) {
+    float floorY = (sky->pos.y - sky->scale.y * 0.5f) + 1;
+
+    for (auto& food : foods) {
+        food->update(dt, floorY);
+        food->physics.velocity.x *= pow(slideFriction, dt * 60.0f);
+        food->physics.velocity.z *= pow(slideFriction, dt * 60.0f);
+    }
+
+    updatePlayer(dt);
+    handleCollisions();
+    handlePlayerCollisions();
+    checkFoodInHole(dt);
 }
 
 void _Scene::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
