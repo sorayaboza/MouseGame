@@ -3,7 +3,8 @@
 
 #include "_modelobj.h"
 #include "_physicsobject.h"
-#include <glm/glm.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec2.hpp>
 #include <_texloader.h>
 
 /* Represents the player (rat) in the game.

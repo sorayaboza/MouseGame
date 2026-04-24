@@ -42,6 +42,45 @@ void _player::init(const std::string& modelPath, float scale) {
 */
 void _player::draw() {
     glPushMatrix(); // Save current transformation state
+            // ----------- DRAW BLOB SHADOW -----------
+        glPushMatrix();
+            glDisable(GL_LIGHTING);
+            glDisable(GL_TEXTURE_2D);
+
+            // Position shadow on the ground (slightly above to prevent z-fighting)
+            glTranslatef(physics.pos.x, physics.pos.y - 0.9f, physics.pos.z);
+
+            // Flatten into ellipse
+            float height = physics.pos.y; // how high player is
+            float scale = 1.5f + (height * 0.1f); // tweak multiplier
+
+            glScalef(scale, 1.0f, scale);
+
+            // Draw circular shadow
+            glBegin(GL_TRIANGLE_FAN);
+                // Center (darker)
+                glColor4f(0.05f, 0.15f, 0.6f, 0.25f);
+                glVertex3f(0.0f, 0.0f, 0.0f);
+
+                int segments = 32;
+                float radius = 0.5f;
+
+                for (int i = 0; i <= segments; i++) {
+                    float angle = (2.0f * 3.14159f * i) / segments;
+                    float x = cos(angle) * radius;
+                    float z = sin(angle) * radius;
+
+                    // Edge (fades out)
+                    glColor4f(0.2f, 0.0f, 0.4f, 0.0f);
+                    glVertex3f(x, 0.0f, z);
+                }
+            glEnd();
+
+            glEnable(GL_TEXTURE_2D);
+            glEnable(GL_LIGHTING);
+        glPopMatrix();
+        // ----------- END SHADOW -----------
+
         texture.BindTex();                 // bind player texture
         // Move player to its position in the world
         glTranslatef(physics.pos.x, physics.pos.y, physics.pos.z);

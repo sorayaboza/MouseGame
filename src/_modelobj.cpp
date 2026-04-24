@@ -1,10 +1,12 @@
-#include "_modelobj.h"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
+
+#include "_modelobj.h"
+
+#include <GL/glew.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <GL/glew.h>
 #include <algorithm>
 #include <cfloat>
 

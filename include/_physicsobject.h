@@ -1,6 +1,7 @@
 #ifndef _PHYSICSOBJECT_H
 #define _PHYSICSOBJECT_H
-#include <glm/glm.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec2.hpp>
 
 #include <_common.h>
 

@@ -1,15 +1,18 @@
 #ifndef _SCENE_H
 #define _SCENE_H
 
-#include<_common.h>
-#include<_lighting.h>
-#include<_inputs.h>
-#include<_texloader.h>
-#include<_skybox.h>
-#include<_camera.h>
 #include <vector>
-#include "_food.h"
-#include "_player.h"
+#include<_common.h>
+#include <_foodsystem.h>
+
+// Forward declarations (lightweight)
+class _lighting;
+class _inputs;
+class _texLoader;
+class _skyBox;
+class _camera;
+class _food;
+class _player;
 
 class _Scene
 {
@@ -39,8 +42,7 @@ class _Scene
         _camera* cam;
         _player* player;
         _food* heldFood = nullptr;
-
-        std::vector<_food*> foods;   // all falling foods
+        _foodsystem* foodSystem;
 
         glm::vec3 mouseHolePos;   // position of the mouse hole in world coordinates
         float mouseHoleRadius;    // radius for detecting food entering hole

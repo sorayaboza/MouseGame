@@ -16,6 +16,12 @@
 #define PI 3.14159
 #define GLEW_STATIC
 
+#pragma once
+
+#define GLM_FORCE_SILENT_WARNINGS
+#include <glm/vec3.hpp>
+#include <glm/vec2.hpp>
+
 using namespace std;
 
 typedef struct{

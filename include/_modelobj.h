@@ -3,8 +3,8 @@
 
 #include <vector>
 #include <string>
-#include <glm/glm.hpp>
-#include <GL/glew.h>
+#include <glm/vec3.hpp>
+#include <glm/vec2.hpp>
 
 /*
     Represents a 3D OBJ model.
@@ -19,24 +19,24 @@ public:
     _modelobj();
     ~_modelobj();
 
-    bool loadOBJ(const std::string& filename, float scale = 1.0f); // load the OBJ file
-    void drawModel();   // Model render.
+    bool loadOBJ(const std::string& filename, float scale);
+    void drawModel();
+
 private:
+    void setupBuffers();
+    void normalizeModel(float desiredSize);
+
+    std::string objFile;
+
     std::vector<glm::vec3> vertices;
     std::vector<glm::vec3> normals;
     std::vector<glm::vec2> uvs;
-    std::string objFile;
-
-    glm::vec3 minBounds;
-    glm::vec3 maxBounds;
-
-    void setupBuffers();
-    void normalizeModel(float desiredSize = 5.0f);
-
-protected:
-    bool buffersInitialized = false;
-    GLuint vao, vboVertices, vboNormals, vboUVs, ebo;
     std::vector<unsigned int> indices;
+
+    glm::vec3 minBounds, maxBounds;
+
+    unsigned int vao, vboVertices, vboNormals, vboUVs, ebo;
+    bool buffersInitialized;
 };
 
 #endif // _MODELOBJ_H

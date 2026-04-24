@@ -16,7 +16,41 @@ void _food::update(float dt, float floorY) {
 }
 
 // Draws the food at its current position
-void _food::draw() {
+void _food::draw(float floorY) {
+    // ----------- DRAW SHADOW (ADD THIS BLOCK) -----------
+    glPushMatrix();
+        glDisable(GL_LIGHTING);
+        glDisable(GL_TEXTURE_2D);
+
+        // Position shadow on ground
+        glTranslatef(physics.pos.x, floorY + 0.02f, physics.pos.z);
+
+        float height = physics.pos.y - floorY;
+        float scale = 1.2f + (height * 0.08f);
+        glScalef(scale, 1.0f, scale);
+
+        glBegin(GL_TRIANGLE_FAN);
+            glColor4f(0.05f, 0.15f, 0.6f, 0.25f);
+            glVertex3f(0.0f, 0.0f, 0.0f);
+
+            int segments = 24;
+            float radius = 0.5f;
+
+            for (int i = 0; i <= segments; i++) {
+                float angle = (2.0f * 3.14159f * i) / segments;
+                float x = cos(angle) * radius;
+                float z = sin(angle) * radius;
+
+                glColor4f(0.05f, 0.15f, 0.6f, 0.0f);
+                glVertex3f(x, 0.0f, z);
+            }
+        glEnd();
+
+        glEnable(GL_TEXTURE_2D);
+        glEnable(GL_LIGHTING);
+    glPopMatrix();
+    // ----------- END SHADOW -----------
+
     glPushMatrix();
         glEnable(GL_TEXTURE_2D); // enable textures
         glColor3f(1.0f, 1.0f, 1.0f);

@@ -12,7 +12,7 @@ _skyBox::~_skyBox() { /*dtor*/ }
 void _skyBox::drawBox() {
      glDisable(GL_LIGHTING);
      glPushMatrix();
-       glColor3f(1,1,1);
+       glColor3f(0.95f, 0.9f, 0.85f);
        glTranslatef(pos.x,pos.y,pos.z);
        glRotatef(rot.x,1,0,0);
        glRotatef(rot.y,0,1,0);

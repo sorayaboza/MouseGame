@@ -4,7 +4,8 @@
 #include "_physicsobject.h"
 #include "_modelobj.h"
 #include <string>
-#include <glm/glm.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec2.hpp>
 #include <_texloader.h>
 
 /*
@@ -27,7 +28,7 @@ public:
     float collisionRadius;  // radius used for collision detection
 
     void update(float dt, float floorY);  // update physics
-    void draw();                          // draw model
+    void draw(float floorY);                          // draw model
 
     glm::vec3 rot;
 };
