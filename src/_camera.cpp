@@ -11,9 +11,7 @@ _camera::_camera() {
     step = 0.5;
     theta = {0,0};
 
-    distance = sqrt(pow(eye.x-des.x,2)+
-                    pow(eye.y-des.y,2)+
-                    pow(eye.z-des.z,2));
+    distance = 35.0f;
 }
 
 _camera::~_camera() { /*dtor*/ }

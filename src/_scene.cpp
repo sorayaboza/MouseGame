@@ -6,14 +6,6 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "_lighting.h"
-#include "_inputs.h"
-#include "_texloader.h"
-#include "_skybox.h"
-#include "_camera.h"
-#include "_food.h"
-#include "_player.h"
-
 float slideFriction = 0.99f; // Friction of the objects
 glm::vec3 playerMoveDir;
 int score = 0;
@@ -35,6 +27,8 @@ _Scene::_Scene() { // ctor
     sky = new _skyBox();
     cam = new _camera();
     foodSystem = new _foodsystem();
+    ui = new _ui();
+    abilities = new _abilities();
 
     mouseHoleRadius = 4.0f;
 }
@@ -82,7 +76,7 @@ GLint _Scene::initGL() {
 
     // --- SETTING WHERE THE HOLE IS ---
     // Bottom-left corner of the back face
-    mouseHolePos.x = -halfX + 21.0f;
+    mouseHolePos.x = -halfX + 30.0f;
     mouseHolePos.y = floorY;
     mouseHolePos.z = -halfZ; // back face
 
@@ -121,7 +115,7 @@ void _Scene::drawScene() {
     cam->des.y = player->physics.pos.y;
     cam->des.z = player->physics.pos.z;
 
-    float distance = 30.0f; // how far camera stays from player
+    float distance = cam->distance;; // how far camera stays from player
 
     float radYaw = glm::radians(cam->yaw);
     float radPitch = glm::radians(cam->pitch);
@@ -134,18 +128,33 @@ void _Scene::drawScene() {
     // --- CAMERA WALL COLLISION ---
     float halfX = sky->scale.x * 0.48f;
     float halfZ = sky->scale.z * 0.48f;
+    float maxDist = cam->distance;
+    float safeDist = maxDist;
 
-    // Clamp camera inside bounds (slide effect happens naturally)
-    if (cam->eye.x < -halfX) cam->eye.x = -halfX;
-    if (cam->eye.x >  halfX) cam->eye.x =  halfX;
-
-    if (cam->eye.z < -halfZ) cam->eye.z = -halfZ;
-    if (cam->eye.z >  halfZ) cam->eye.z =  halfZ;
-
-    float minHeight = 10.0f;
-    if (cam->eye.y < minHeight) {
-        cam->eye.y = minHeight;
+    // Check X walls
+    if (cam->eye.x < -halfX) {
+        float t = (-halfX - cam->des.x) / (cam->eye.x - cam->des.x);
+        safeDist = maxDist * t;
     }
+    if (cam->eye.x > halfX) {
+        float t = (halfX - cam->des.x) / (cam->eye.x - cam->des.x);
+        safeDist = maxDist * t;
+    }
+
+    // Check Z walls
+    if (cam->eye.z < -halfZ) {
+        float t = (-halfZ - cam->des.z) / (cam->eye.z - cam->des.z);
+        safeDist = maxDist * t;
+    }
+    if (cam->eye.z > halfZ) {
+        float t = (halfZ - cam->des.z) / (cam->eye.z - cam->des.z);
+        safeDist = maxDist * t;
+    }
+
+    // Recalculate eye using SAFE distance
+    cam->eye.x = cam->des.x + safeDist * cos(radPitch) * sin(radYaw);
+    cam->eye.y = cam->des.y + safeDist * sin(radPitch);
+    cam->eye.z = cam->des.z + safeDist * cos(radPitch) * cos(radYaw);
 
     cam->setUpCamera();  // Set camera position and orientation
     sky->drawBox(); // Draw sky box
@@ -154,6 +163,17 @@ void _Scene::drawScene() {
 
     foodSystem->draw(floorY); // Draw the food
     player->draw(); // Draw the rat model
+
+    ui->draw(
+        1920, 1080, // window size
+        score,
+        abilities->dashCooldownTimer,
+        abilities->dashCooldown,
+        abilities->canDash,
+        abilities->fartTimer,
+        abilities->fartCooldown,
+        abilities->canFart
+    );
 
     // --- DEBUG: Draw mouse hole marker ---
     glPushMatrix();
@@ -164,6 +184,20 @@ void _Scene::drawScene() {
         glEnable(GL_TEXTURE_2D);
     glPopMatrix();
 
+    // --- DEBUG: Draw fart  ---
+    glDisable(GL_TEXTURE_2D);
+
+    for (auto &f : abilities->farts) {
+        glPushMatrix();
+            glTranslatef(f.pos.x, f.pos.y, f.pos.z);
+            glColor3f(0.3f, 1.0f, 0.3f);
+            glutSolidSphere(0.5, 10, 10);
+        glPopMatrix();
+    }
+
+    glEnable(GL_TEXTURE_2D);
+
+
 }
 
 void _Scene::updatePlayer(float dt) {
@@ -172,14 +206,24 @@ void _Scene::updatePlayer(float dt) {
     glm::vec3 moveVec(0.0f);
 
     // Camera forward (from eye --> target)
-    glm::vec3 camForward = glm::normalize(glm::vec3(
+    glm::vec3 forwardRaw = glm::vec3(
         cam->des.x - cam->eye.x,
-        0.0f, // ignore vertical
+        0.0f,
         cam->des.z - cam->eye.z
-    ));
+    );
+
+    glm::vec3 camForward = glm::length(forwardRaw) > 0.0001f
+        ? glm::normalize(forwardRaw)
+        : glm::vec3(0,0,-1);
+
 
     // Camera right (perpendicular)
-    glm::vec3 camRight = glm::normalize(glm::cross(camForward, glm::vec3(0,1,0)));
+    glm::vec3 rightRaw = glm::cross(camForward, glm::vec3(0,1,0));
+
+    glm::vec3 camRight = glm::length(rightRaw) > 0.0001f
+        ? glm::normalize(rightRaw)
+        : glm::vec3(1,0,0);
+
 
     // WASD relative to camera
     if (GetAsyncKeyState('W') & 0x8000) moveVec += camForward;
@@ -188,20 +232,16 @@ void _Scene::updatePlayer(float dt) {
     if (GetAsyncKeyState('D') & 0x8000) moveVec += camRight;
 
     // Save movement direction for pushing
-    if (glm::length(moveVec) > 0.0f) {
-        playerMoveDir = glm::normalize(moveVec);
+    if (!abilities->isDashing()) {
+        player->physics.pos += moveVec * speed;
     }
-
-    // Normalize so diagonal isn't faster
-    if (glm::length(moveVec) > 0.0f)
-        moveVec = glm::normalize(moveVec) * speed;
-
-    // Apply movement
-    player->physics.pos += moveVec;
 
     // Rotate the rat so it faces the direction it moves
     if (glm::length(moveVec) > 0.0f) {
-        player->rot.y = glm::degrees(atan2(moveVec.x, moveVec.z));
+        moveVec = glm::normalize(moveVec);
+        playerMoveDir = moveVec;
+
+        player->rot.y = glm::degrees(atan2(moveVec.x, moveVec.z)); // Rotate rat with movement
     }
 
     // Sky box boundary: Prevents player from leaving the skybox
@@ -221,6 +261,9 @@ void _Scene::updateScene(float dt) {
     foodSystem->handleCollisions();
     foodSystem->handlePlayerCollisions(player, playerMoveDir);
     foodSystem->checkFoodInHole(mouseHolePos, mouseHoleRadius, score, dt);
+
+    abilities->handleInput(playerMoveDir, player->physics.pos);
+    abilities->update(dt, player->physics.pos, playerMoveDir);
 
     updatePlayer(dt);
 }

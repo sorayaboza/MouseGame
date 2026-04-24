@@ -3,7 +3,7 @@
 _skyBox::_skyBox() {
     //ctor
     rot = {0,0,0};
-    scale = {100,150,100};
+    scale = {150,200,150};
     pos = {0,0,0};
 }
 

@@ -3,16 +3,16 @@
 
 #include <vector>
 #include<_common.h>
-#include <_foodsystem.h>
-
-// Forward declarations (lightweight)
-class _lighting;
-class _inputs;
-class _texLoader;
-class _skyBox;
-class _camera;
-class _food;
-class _player;
+#include<_foodsystem.h>
+#include<_lighting.h>
+#include<_inputs.h>
+#include<_texloader.h>
+#include<_skybox.h>
+#include<_camera.h>
+#include<_food.h>
+#include<_player.h>
+#include<_ui.h>
+#include<_abilities.h>
 
 class _Scene
 {
@@ -43,6 +43,8 @@ class _Scene
         _player* player;
         _food* heldFood = nullptr;
         _foodsystem* foodSystem;
+        _ui* ui;
+        _abilities* abilities;
 
         glm::vec3 mouseHolePos;   // position of the mouse hole in world coordinates
         float mouseHoleRadius;    // radius for detecting food entering hole
