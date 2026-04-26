@@ -11,7 +11,7 @@ void _renderer::renderFrame(FrameRenderData& frame)
     for (auto& f : *frame.foods) { drawFood(f); }
     for (auto& f : *frame.farts) { drawFart(f); }
 
-    drawMouseHole(frame.mouseHolePos);
+    drawMouseHole(frame.mouseHolePos, frame.mouseHoleRadius);
 }
 
 
@@ -48,33 +48,44 @@ void _renderer::drawFood(const FoodRenderData& f)
     glPopMatrix();
 }
 
-void _renderer::drawFart(const FartRenderData& f)
-{
+void _renderer::drawFart(const FartRenderData& f) {
     glPushMatrix();
 
+    glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT);
+
     glDisable(GL_TEXTURE_2D);
+    glDisable(GL_LIGHTING);
 
     glTranslatef(f.pos.x, f.pos.y, f.pos.z);
     glColor3f(0.3f, 1.0f, 0.3f);
     glutSolidSphere(0.5, 10, 10);
 
-    glEnable(GL_TEXTURE_2D);
-
+    glPopAttrib();
     glPopMatrix();
 }
 
-void _renderer::drawMouseHole(const glm::vec3& pos)
-{
+void _renderer::drawMouseHole(const glm::vec3& pos,float radius) {
     glPushMatrix();
 
+    glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT);
+
     glDisable(GL_TEXTURE_2D);
+    glDisable(GL_LIGHTING);
 
     glTranslatef(pos.x, pos.y, pos.z);
-    glColor3f(1.0f, 0.0f, 0.0f);
-    glutSolidCube(1.0f);
+    glColor3f(0.05f, 0.05f, 0.05f); // dark hole
 
-    glEnable(GL_TEXTURE_2D);
+    GLUquadric* quad = gluNewQuadric();
 
+    glRotatef(90, 0, 0, 1); // Rotate so cylinder faces forward (out of wall)
+
+    glScalef(radius, radius, radius * 0.2f);
+
+    // Draw cylinder (radius, radius, height, slices, stacks)
+    gluCylinder(quad, 1.0f, 1.0f, 1.0f, 32, 32);
+
+    gluDeleteQuadric(quad);
+
+    glPopAttrib();
     glPopMatrix();
 }
-

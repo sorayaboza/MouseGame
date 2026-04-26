@@ -5,6 +5,7 @@ _lighting::_lighting() { /*ctor*/ }
 _lighting::~_lighting() { /*dtor*/ }
 
 void _lighting::setLight(GLenum light) {
+    glEnable(light); // ensure light is active
     glLightfv(light, GL_AMBIENT, ambientLight);
     glLightfv(light, GL_DIFFUSE, diffuseLight);
     glLightfv(light, GL_SPECULAR,specularLight);

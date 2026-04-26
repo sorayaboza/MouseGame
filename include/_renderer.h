@@ -35,6 +35,7 @@ struct FrameRenderData {
     std::vector<FartRenderData>* farts;
 
     glm::vec3 mouseHolePos;
+    float mouseHoleRadius;
 };
 
 
@@ -49,7 +50,7 @@ private:
     void drawPlayer(const PlayerRenderData& player);
     void drawFood(const FoodRenderData& food);
     void drawFart(const FartRenderData& fart);
-    void drawMouseHole(const glm::vec3& pos);
+    void drawMouseHole(const glm::vec3& pos, float radius);
 };
 
 #endif

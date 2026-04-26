@@ -31,7 +31,7 @@ _Scene::_Scene() { // ctor
     abilities = new _abilities();
     renderer = new _renderer();
 
-    mouseHoleRadius = 4.0f;
+    mouseHoleRadius = 6.0f;
 }
 
 _Scene::~_Scene() { /*dtor*/ }
@@ -48,6 +48,7 @@ GLint _Scene::initGL() {
     glEnable(GL_TEXTURE_2D); // Enable texture mapping
     glEnable(GL_BLEND); // Enable blending
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_NORMALIZE); // Ensures all normals are unit length
     myLight->setLight(GL_LIGHT0); // Configure light properties
 
     // ---------------- SKYBOX SETUP ----------------
@@ -158,7 +159,13 @@ void _Scene::drawScene() {
     cam->eye.z = cam->des.z + safeDist * cos(radPitch) * cos(radYaw);
 
     cam->setUpCamera();  // Set camera position and orientation
-    sky->drawBox(); // Draw sky box
+
+    glPushAttrib(GL_ENABLE_BIT);
+    glDisable(GL_LIGHTING);
+
+    sky->drawBox();
+
+    glPopAttrib();
 
     float floorY = (sky->pos.y - sky->scale.y * 0.5f) + 1;
 
@@ -196,13 +203,34 @@ void _Scene::drawScene() {
 
     // -------- MOUSE HOLE --------
     frame.mouseHolePos = mouseHolePos;
+    frame.mouseHoleRadius = mouseHoleRadius;
 
+    // ---------- WORLD RENDER STATE ----------
+    glEnable(GL_LIGHTING);
+    glEnable(GL_TEXTURE_2D);
+    glEnable(GL_DEPTH_TEST);
     // -------- RENDER --------
     renderer->renderFrame(frame);
 
+    // ---------- UI RENDER SETUP ----------
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    gluOrtho2D(0, 1920, 0, 1080);
 
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    glPushAttrib(GL_ENABLE_BIT);
+
+    // Disable 3D stuff
+    glDisable(GL_LIGHTING);
+    glDisable(GL_DEPTH_TEST);
+
+    // ---------- DRAW UI ----------
     ui->draw(
-        1920, 1080, // window size
+        1920, 1080,
         score,
         abilities->dashCooldownTimer,
         abilities->dashCooldown,
@@ -212,7 +240,14 @@ void _Scene::drawScene() {
         abilities->canFart
     );
 
-    glEnable(GL_TEXTURE_2D);
+    // ---------- RESTORE STATE ----------
+    glPopAttrib();
+
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
 }
 
 void _Scene::updatePlayer(float dt) {
