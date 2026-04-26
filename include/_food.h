@@ -13,11 +13,9 @@ public:
     ~_food();
 
     void update(float dt, float floorY);
-    void draw(float floorY);
 
     _ModelLoaderMD2* model;
     _physicsobject physics;
-    _texLoader texture;
 
     float collisionRadius = 2.0f;
 

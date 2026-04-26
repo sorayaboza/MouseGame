@@ -13,7 +13,6 @@ public:
 
     void init(_skyBox* skyRef);
     void update(float dt, float floorY);
-    void draw(float floorY);
 
     void handleCollisions(); // Food-to-food collisions
     void handlePlayerCollisions(_player* player, glm::vec3 playerMoveDir); // Food-to-player collisions

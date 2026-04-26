@@ -57,7 +57,7 @@ GLint _Scene::initGL() {
     foodSystem->spawnFoods(10); // Spawn food
 
     float skyBottomY = sky->pos.y - sky->scale.y * 0.5f;
-    float floorY = skyBottomY + 1.0f;
+    float floorY = skyBottomY + 3.0f;
 
     float halfX = sky->scale.x * 0.5f;
     float halfZ = sky->scale.z * 0.5f;
@@ -183,8 +183,23 @@ void _Scene::drawScene() {
 
     frame.foods = &foodRenderList;
 
+    // -------- FARTS --------
+    std::vector<FartRenderData> fartRenderList;
+
+    for (auto& f : abilities->farts) {
+        FartRenderData fd;
+        fd.pos = f.pos;
+        fartRenderList.push_back(fd);
+    }
+
+    frame.farts = &fartRenderList;
+
+    // -------- MOUSE HOLE --------
+    frame.mouseHolePos = mouseHolePos;
+
     // -------- RENDER --------
     renderer->renderFrame(frame);
+
 
     ui->draw(
         1920, 1080, // window size
@@ -197,29 +212,7 @@ void _Scene::drawScene() {
         abilities->canFart
     );
 
-    // --- DEBUG: Draw mouse hole marker ---
-    glPushMatrix();
-        glDisable(GL_TEXTURE_2D);
-        glTranslatef(mouseHolePos.x, mouseHolePos.y, mouseHolePos.z); // Move to hole position
-        glColor3f(1.0f, 0.0f, 0.0f); // Red cube
-        glutSolidCube(1.0f);          // 1 unit cube for visibility
-        glEnable(GL_TEXTURE_2D);
-    glPopMatrix();
-
-    // --- DEBUG: Draw fart  ---
-    glDisable(GL_TEXTURE_2D);
-
-    for (auto &f : abilities->farts) {
-        glPushMatrix();
-            glTranslatef(f.pos.x, f.pos.y, f.pos.z);
-            glColor3f(0.3f, 1.0f, 0.3f);
-            glutSolidSphere(0.5, 10, 10);
-        glPopMatrix();
-    }
-
     glEnable(GL_TEXTURE_2D);
-
-
 }
 
 void _Scene::updatePlayer(float dt) {

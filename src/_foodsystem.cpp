@@ -9,11 +9,6 @@ void _foodsystem::init(_skyBox* skyRef) {
     sky = skyRef;
 }
 
-void _foodsystem::draw(float floorY) {
-    for (auto& food : foods) {
-        food->draw(floorY);
-    }
-}
 // Create several food objects that fall and bounce inside the sky box.
 void _foodsystem::spawnFoods(int numFoods) {
     // List of possible food models
@@ -38,7 +33,6 @@ void _foodsystem::spawnFoods(int numFoods) {
     for(int i=0; i<numFoods; i++) {
         FoodType type = foodTypes[rand() % foodTypes.size()];
         _food* newFood = new _food(type.model, type.scale);
-        newFood->texture.loadTexture((char*)type.texture.c_str()); // Load correct texture
 
         newFood->physics.pos.x = ((rand()%100)/100.0f)*(2*halfX)-halfX; // Random X position inside sky box bounds
         newFood->physics.pos.z = ((rand()%100)/100.0f)*(2*halfZ)-halfZ; // Random Z position inside sky box bounds

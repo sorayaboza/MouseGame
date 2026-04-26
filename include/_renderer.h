@@ -21,11 +21,22 @@ struct FoodRenderData {
     _ModelLoaderMD2* model;
 };
 
+// -------- FART RENDER DATA --------
+struct FartRenderData {
+    glm::vec3 pos;
+};
+
+
 // -------- FRAME DATA --------
 struct FrameRenderData {
     PlayerRenderData player;
     std::vector<FoodRenderData>* foods;
+
+    std::vector<FartRenderData>* farts;
+
+    glm::vec3 mouseHolePos;
 };
+
 
 class _renderer {
 public:
@@ -37,6 +48,8 @@ public:
 private:
     void drawPlayer(const PlayerRenderData& player);
     void drawFood(const FoodRenderData& food);
+    void drawFart(const FartRenderData& fart);
+    void drawMouseHole(const glm::vec3& pos);
 };
 
 #endif

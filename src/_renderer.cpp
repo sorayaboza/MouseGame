@@ -8,10 +8,12 @@ void _renderer::renderFrame(FrameRenderData& frame)
 {
     drawPlayer(frame.player);
 
-    for (auto& f : *frame.foods) {
-        drawFood(f);
-    }
+    for (auto& f : *frame.foods) { drawFood(f); }
+    for (auto& f : *frame.farts) { drawFart(f); }
+
+    drawMouseHole(frame.mouseHolePos);
 }
+
 
 void _renderer::drawPlayer(const PlayerRenderData& p)
 {
@@ -45,3 +47,34 @@ void _renderer::drawFood(const FoodRenderData& f)
 
     glPopMatrix();
 }
+
+void _renderer::drawFart(const FartRenderData& f)
+{
+    glPushMatrix();
+
+    glDisable(GL_TEXTURE_2D);
+
+    glTranslatef(f.pos.x, f.pos.y, f.pos.z);
+    glColor3f(0.3f, 1.0f, 0.3f);
+    glutSolidSphere(0.5, 10, 10);
+
+    glEnable(GL_TEXTURE_2D);
+
+    glPopMatrix();
+}
+
+void _renderer::drawMouseHole(const glm::vec3& pos)
+{
+    glPushMatrix();
+
+    glDisable(GL_TEXTURE_2D);
+
+    glTranslatef(pos.x, pos.y, pos.z);
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glutSolidCube(1.0f);
+
+    glEnable(GL_TEXTURE_2D);
+
+    glPopMatrix();
+}
+
