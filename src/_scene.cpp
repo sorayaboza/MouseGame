@@ -9,7 +9,7 @@
 float slideFriction = 0.99f; // Friction of the objects
 glm::vec3 playerMoveDir;
 int score = 0;
-float scale = 1.0f; // Scale of objects
+float scale = 2.0f; // Scale of objects
 
 /* Main controller for the game world.
 

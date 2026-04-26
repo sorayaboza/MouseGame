@@ -79,12 +79,35 @@ void _renderer::drawMouseHole(const glm::vec3& pos,float radius) {
 
     glRotatef(90, 0, 0, 1); // Rotate so cylinder faces forward (out of wall)
 
-    glScalef(radius, radius, radius * 0.2f);
+    float time = glutGet(GLUT_ELAPSED_TIME) * 0.001f;
+
+    // Pulse between ~90% and 110%
+    float pulse = 1.0f + 0.1f * sin(time * 3.0f);
+
+    float visualRadius = radius * pulse;
+
+    glScalef(visualRadius, visualRadius, visualRadius * 0.2f);
 
     // Draw cylinder (radius, radius, height, slices, stacks)
     gluCylinder(quad, 1.0f, 1.0f, 1.0f, 32, 32);
-
     gluDeleteQuadric(quad);
+
+    glPushMatrix();
+
+    // move slightly inside the hole
+    glTranslatef(0, 0, 0.5f);
+
+    // slightly smaller inner disk
+    glScalef(visualRadius * 0.1f, visualRadius * 0.1f, 0.1f);
+
+    // darker center
+    glColor3f(0.0f, 0.0f, 0.0f);
+
+    GLUquadric* innerQuad = gluNewQuadric();
+    gluDisk(innerQuad, 0.0f, 1.0f, 32, 1);
+    gluDeleteQuadric(innerQuad);
+
+    glPopMatrix();
 
     glPopAttrib();
     glPopMatrix();

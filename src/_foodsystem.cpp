@@ -177,7 +177,11 @@ void _foodsystem::checkFoodInHole(glm::vec3 holePos, float holeRadius, int& scor
             float nz = -dz / dist;
 
             // stronger when closer (feels nice)
-            float strength = magnetStrength * (1.0f - (dist / magnetRadius));
+            float t = 1.0f - (dist / magnetRadius);
+
+            t = t * t; // square it for stronger pull near center
+
+            float strength = magnetStrength * t;
 
             // apply pull
             food->physics.velocity.x += nx * strength * dt;
