@@ -3,8 +3,8 @@
 
 // Constructor for food object. Loads the model and prepares it for rendering.
 _food::_food(const std::string& modelPath, float scale) { //ctor
-    model.loadOBJ(modelPath, scale);
-    texture.loadTexture((char*)"images/default.png"); // Load a texture (example)
+    model = new _ModelLoaderMD2();
+    model->initModel(modelPath.c_str(), (char*)"images/milk.png"); // Load a texture (example)
 }
 
 _food::~_food() { /*dtor*/ }
@@ -45,9 +45,6 @@ void _food::draw(float floorY) {
                 glVertex3f(x, 0.0f, z);
             }
         glEnd();
-
-        glEnable(GL_TEXTURE_2D);
-        glEnable(GL_LIGHTING);
     glPopMatrix();
     // ----------- END SHADOW -----------
 
@@ -55,12 +52,12 @@ void _food::draw(float floorY) {
         glEnable(GL_TEXTURE_2D); // enable textures
         glColor3f(1.0f, 1.0f, 1.0f);
 
-        texture.BindTex();   // bind texture before drawing
-
         glTranslatef(physics.pos.x, physics.pos.y, physics.pos.z);
-        glRotatef(rot.y, 0, 1, 0);
+        glRotatef(-90, 1, 0, 0);
 
-        model.drawModel(); // draw model with UVCs
+        glScalef(0.1f, 0.1f, 0.1f);
+
+        model->Draw();
 
         glBindTexture(GL_TEXTURE_2D, 0); // reset after drawing
     glPopMatrix();

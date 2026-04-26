@@ -29,6 +29,7 @@ _Scene::_Scene() { // ctor
     foodSystem = new _foodsystem();
     ui = new _ui();
     abilities = new _abilities();
+    renderer = new _renderer();
 
     mouseHoleRadius = 4.0f;
 }
@@ -71,7 +72,7 @@ GLint _Scene::initGL() {
     // ---------- INITIALIZE PLAYER MODEL ----------
     // Load the rat OBJ model that the player controls.
     player = new _player();
-    player->init("models/player.obj", 1.0f);
+    player->init("models/weretiger/tris.md2");
     player->physics.pos = {0, floorY, 0};
 
     // --- SETTING WHERE THE HOLE IS ---
@@ -161,8 +162,29 @@ void _Scene::drawScene() {
 
     float floorY = (sky->pos.y - sky->scale.y * 0.5f) + 1;
 
-    foodSystem->draw(floorY); // Draw the food
-    player->draw(); // Draw the rat model
+    FrameRenderData frame;
+
+    // -------- PLAYER --------
+    frame.player.pos = player->physics.pos;
+    frame.player.rotY = player->rot.y;
+    frame.player.model = player->model;
+
+    // -------- FOOD --------
+    std::vector<FoodRenderData> foodRenderList;
+
+    for (auto& f : foodSystem->foods) {
+        FoodRenderData fd;
+        fd.pos = f->physics.pos;
+        fd.rotY = f->rot.y;
+        fd.model = f->model;
+
+        foodRenderList.push_back(fd);
+    }
+
+    frame.foods = &foodRenderList;
+
+    // -------- RENDER --------
+    renderer->renderFrame(frame);
 
     ui->draw(
         1920, 1080, // window size
@@ -241,8 +263,12 @@ void _Scene::updatePlayer(float dt) {
         moveVec = glm::normalize(moveVec);
         playerMoveDir = moveVec;
 
-        player->rot.y = glm::degrees(atan2(moveVec.x, moveVec.z)); // Rotate rat with movement
+        player->rot.y = glm::degrees(atan2(moveVec.x, moveVec.z)) - 90.0f; // Rotate rat with movement
+        player->model->actionTrigger = player->model->RUN;
+    } else {
+        player->model->actionTrigger = player->model->STAND;
     }
+    player->model->actions();
 
     // Sky box boundary: Prevents player from leaving the skybox
     float halfX = sky->scale.x * 0.47f;

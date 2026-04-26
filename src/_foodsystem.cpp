@@ -24,8 +24,8 @@ void _foodsystem::spawnFoods(int numFoods) {
     };
 
     std::vector<FoodType> foodTypes = {
-        {"models/cheese.obj", "images/cheese.png", 0.8f},
-        {"models/donut.obj",  "images/donut.png",  1.2f}
+        {"models/milk/tris.md2", "images/milk.png", 0.8f},
+        {"models/milk/tris.md2",  "images/milk.png",  1.2f}
     };
 
     // Determine playable boundaries from sky box size

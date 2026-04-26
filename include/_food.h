@@ -1,36 +1,29 @@
 #ifndef _FOOD_H
 #define _FOOD_H
 
-#include "_physicsobject.h"
-#include "_modelobj.h"
 #include <string>
-#include <glm/vec3.hpp>
-#include <glm/vec2.hpp>
+#include <_ModelLoaderMD2.h>
+#include <_physicsobject.h>
 #include <_texloader.h>
 
-/*
-    Represents a food item in the game.
-
-    Combines:
-    - physics object for motion
-    - OBJ model for rendering
-*/
+// Represents a food item in the game.
 class _food {
 public:
-    _food(const std::string& modelPath, float scale = 1.0f);
-    ~_food(); // destructor
+    _food(const std::string& modelPath, float scale);
+    ~_food();
 
-    _physicsobject physics; // physics for position/velocity
-    _modelobj model;        // 3D model
-    _texLoader texture;     // 3d model texture
+    void update(float dt, float floorY);
+    void draw(float floorY);
 
-    float modelScale;       // scale of the visual model
-    float collisionRadius;  // radius used for collision detection
+    _ModelLoaderMD2* model;
+    _physicsobject physics;
+    _texLoader texture;
 
-    void update(float dt, float floorY);  // update physics
-    void draw(float floorY);                          // draw model
+    float collisionRadius = 2.0f;
 
-    glm::vec3 rot;
+    struct {
+        float y = 0;
+    } rot;
 };
 
 #endif // _FOOD_H

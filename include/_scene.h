@@ -13,6 +13,7 @@
 #include<_player.h>
 #include<_ui.h>
 #include<_abilities.h>
+#include<_renderer.h>
 
 class _Scene
 {
@@ -45,6 +46,7 @@ class _Scene
         _foodsystem* foodSystem;
         _ui* ui;
         _abilities* abilities;
+        _renderer* renderer;
 
         glm::vec3 mouseHolePos;   // position of the mouse hole in world coordinates
         float mouseHoleRadius;    // radius for detecting food entering hole

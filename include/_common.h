@@ -1,3 +1,4 @@
+#pragma GCC diagnostic ignored "-Wattributes"
 #ifndef _COMMON_H
 #define _COMMON_H
 
@@ -18,7 +19,6 @@
 
 #pragma once
 
-#define GLM_FORCE_SILENT_WARNINGS
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
 
