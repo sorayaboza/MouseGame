@@ -1,3 +1,5 @@
+Note: This is the older version for this project. The most recent version can be found in the main branch.
+
 ## When copying files onto new project
 File > New > Project > GLUT Project
 * Name your project
