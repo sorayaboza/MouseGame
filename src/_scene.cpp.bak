@@ -1,0 +1,742 @@
+// ============================================================
+//  _scene.cpp  –  Complete game scene implementation
+//  CSCI 291T  Mid-Term
+// ============================================================
+#include "_scene.h"
+#include <math.h>
+#include <sstream>
+#include <string>
+
+// ── Timer ────────────────────────────────────────────────────
+static auto g_lastTime = std::chrono::steady_clock::now();
+
+float _Scene::deltaT = 0.0f;
+
+// ============================================================
+//  Constructor / Destructor
+// ============================================================
+_Scene::_Scene()
+{
+    gameState  = LANDING;
+    score      = 0;
+    clickCount = 0;
+    mouseX = mouseY = 0;
+    mouse.x = mouse.y = mouse.z = 0;
+    wWidth = 1280; wHeight = 720;
+}
+
+_Scene::~_Scene()
+{
+    delete myLight;   delete keyMS;  delete sky;
+    delete cam;       delete myMusic; delete myCollision;
+    delete landingTex;
+}
+
+// ============================================================
+//  initGL  –  called once after GL context is ready
+// ============================================================
+GLint _Scene::initGL()
+{
+    glewInit();
+    wWidth  = (float)GetSystemMetrics(SM_CXSCREEN);
+    wHeight = (float)GetSystemMetrics(SM_CYSCREEN);
+
+    glClearColor(0.02f, 0.02f, 0.05f, 1.0f);
+    glClearDepth(1.0);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_TEXTURE_2D);
+
+    srand((unsigned)time(NULL));
+
+    // -- Landing background texture (uses existing project image)
+    landingTex->loadTexture("images/front.jpg");
+
+    // -- Skybox textures
+    sky->boxInit();
+    sky->myTex[0].loadTexture("images/front.png");
+    sky->myTex[1].loadTexture("images/back.png");
+    sky->myTex[2].loadTexture("images/top.png");
+    sky->myTex[3].loadTexture("images/bottom.png");
+    sky->myTex[4].loadTexture("images/left.png");
+    sky->myTex[5].loadTexture("images/right.png");
+
+    // -- Stagger falling object heights so they don't all arrive at once
+    for (int i = 0; i < NUM_OBJS; i++)
+    {
+        fallingObjs[i].spawn();
+        fallingObjs[i].pos.y += (float)(rand() % 200);
+    }
+
+    // -- Sound engine check
+    myMusic->iniSounds();
+    // myMusic->playMusic("sounds/mic.mp3");  // uncomment to enable music
+
+    // -- Camera default position
+    cam->camReset();
+
+    gameState = LANDING;
+    return GL_TRUE;
+}
+
+// ============================================================
+//  reSize
+// ============================================================
+void _Scene::reSize(GLint width, GLint height)
+{
+    if (height == 0) height = 1;
+    wWidth  = (float)width;
+    wHeight = (float)height;
+
+    GLfloat aspect = wWidth / wHeight;
+    glViewport(0, 0, width, height);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(60.0, aspect, 0.1, 3000.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
+
+// ============================================================
+//  Master draw dispatcher
+// ============================================================
+void _Scene::drawScene()
+{
+    // Delta-time calculation
+    auto now = std::chrono::steady_clock::now();
+    std::chrono::duration<float> elapsed = now - g_lastTime;
+    deltaT      = elapsed.count();
+    g_lastTime  = now;
+    if (deltaT > 0.1f) deltaT = 0.1f;  // clamp large spikes
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glLoadIdentity();
+
+    switch (gameState)
+    {
+        case LANDING: drawLandingPage(); break;
+        case MENU:    drawMenuPage();    break;
+        case HELP:    drawHelpPage();    break;
+        case GAME:    drawGameScene();   break;
+        case PAUSE:   drawGameScene();   // frozen
+                      drawPausePopup();  break;
+    }
+}
+
+// ============================================================
+//  2-D helpers
+// ============================================================
+void _Scene::begin2D()
+{
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_TEXTURE_2D);
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    gluOrtho2D(0.0, wWidth, 0.0, wHeight);
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+}
+
+void _Scene::end2D()
+{
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_TEXTURE_2D);
+}
+
+void _Scene::drawRect(float x, float y, float w, float h,
+                      float r, float g, float b, float a)
+{
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(r, g, b, a);
+    glBegin(GL_QUADS);
+        glVertex2f(x,     y    );
+        glVertex2f(x + w, y    );
+        glVertex2f(x + w, y + h);
+        glVertex2f(x,     y + h);
+    glEnd();
+    glDisable(GL_BLEND);
+}
+
+void _Scene::drawText(float x, float y, const char* text, void* font)
+{
+    glRasterPos2f(x, y);
+    for (const char* c = text; *c != '\0'; c++)
+        glutBitmapCharacter(font, *c);
+}
+
+// GLUT stroke text – scale controls the height in ortho pixels
+void _Scene::drawStrokeText(float x, float y, float scale, const char* text)
+{
+    glPushMatrix();
+    glTranslatef(x, y, 0.0f);
+    glScalef(scale, scale, 1.0f);
+    for (const char* c = text; *c != '\0'; c++)
+        glutStrokeCharacter(GLUT_STROKE_ROMAN, *c);
+    glPopMatrix();
+}
+
+bool _Scene::inButton(int mx, int my, const BtnRect& btn)
+{
+    return (mx >= btn.x && mx <= btn.x + btn.w &&
+            my >= btn.y && my <= btn.y + btn.h);
+}
+
+// ============================================================
+//  LANDING PAGE
+// ============================================================
+void _Scene::drawLandingPage()
+{
+    begin2D();
+
+    // -- Background image
+    glEnable(GL_TEXTURE_2D);
+    landingTex->BindTex();
+    glColor3f(1, 1, 1);
+    glBegin(GL_QUADS);
+        glTexCoord2f(0, 0); glVertex2f(0,      0      );
+        glTexCoord2f(1, 0); glVertex2f(wWidth, 0      );
+        glTexCoord2f(1, 1); glVertex2f(wWidth, wHeight);
+        glTexCoord2f(0, 1); glVertex2f(0,      wHeight);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+
+    // -- Dark overlay for contrast
+    drawRect(0, 0, wWidth, wHeight, 0.0f, 0.0f, 0.0f, 0.55f);
+
+    float cx = wWidth  / 2.0f;
+    float cy = wHeight / 2.0f;
+
+    // -- Title banner
+    drawRect(cx - 320, cy + 80, 640, 110, 0.05f, 0.05f, 0.25f, 0.85f);
+
+    // Title text (stroke, large)
+    glLineWidth(2.5f);
+    glColor3f(1.0f, 0.85f, 0.0f);
+    // "SKY ASSAULT" – stroke chars ~100 units wide; at scale 0.38 ≈ 38 px/char
+    drawStrokeText(cx - 280, cy + 130, 0.38f, "SKY ASSAULT");
+    glLineWidth(1.0f);
+
+    // Subtitle
+    glColor3f(0.85f, 0.85f, 0.85f);
+    drawText(cx - 130, cy + 92, "A First-Person Sky-Shooter", GLUT_BITMAP_HELVETICA_18);
+
+    // Pulsing instruction (just always drawn)
+    glColor3f(1.0f, 1.0f, 0.3f);
+    drawText(cx - 175, cy - 10, "Press  ENTER  or  CLICK  to  Continue",
+             GLUT_BITMAP_HELVETICA_18);
+
+    glColor3f(0.6f, 0.6f, 0.6f);
+    drawText(cx - 90, cy - 55, "CSCI 291T  -  Mid-Term Project",
+             GLUT_BITMAP_HELVETICA_12);
+
+    end2D();
+}
+
+// ============================================================
+//  MENU PAGE
+// ============================================================
+void _Scene::drawMenuPage()
+{
+    begin2D();
+
+    // Background
+    drawRect(0, 0, wWidth, wHeight, 0.04f, 0.04f, 0.12f, 1.0f);
+
+    float cx = wWidth  / 2.0f;
+    float cy = wHeight / 2.0f;
+
+    // Title
+    glLineWidth(2.0f);
+    glColor3f(1.0f, 0.82f, 0.0f);
+    drawStrokeText(cx - 265, cy + 230, 0.35f, "SKY ASSAULT");
+    glLineWidth(1.0f);
+
+    glColor3f(0.55f, 0.65f, 0.9f);
+    drawText(cx - 50, cy + 190, "MAIN MENU", GLUT_BITMAP_HELVETICA_18);
+
+    // Divider
+    glColor3f(0.25f, 0.25f, 0.55f);
+    glBegin(GL_LINES);
+        glVertex2f(cx - 220, cy + 175); glVertex2f(cx + 220, cy + 175);
+    glEnd();
+
+    // Button layout
+    float btnW = 320.0f, btnH = 62.0f;
+    float btnX = cx - btnW / 2.0f;
+
+    menuBtns[0] = { btnX, cy + 70,  btnW, btnH };
+    menuBtns[1] = { btnX, cy -  20, btnW, btnH };
+    menuBtns[2] = { btnX, cy - 110, btnW, btnH };
+
+    bool h0 = inButton(mouseX, mouseY, menuBtns[0]);
+    bool h1 = inButton(mouseX, mouseY, menuBtns[1]);
+    bool h2 = inButton(mouseX, mouseY, menuBtns[2]);
+
+    // New Game
+    drawRect(btnX, cy + 70,  btnW, btnH,
+             h0 ? 0.2f : 0.1f, h0 ? 0.6f : 0.3f, h0 ? 0.2f : 0.1f, 0.92f);
+    glColor3f(h0 ? 1.0f : 0.9f, 1.0f, h0 ? 1.0f : 0.9f);
+    drawText(cx - 72, cy + 93,  "[N]  New Game", GLUT_BITMAP_HELVETICA_18);
+
+    // Help
+    drawRect(btnX, cy - 20, btnW, btnH,
+             h1 ? 0.55f : 0.1f, h1 ? 0.55f : 0.25f, h1 ? 0.15f : 0.1f, 0.92f);
+    glColor3f(1.0f, 1.0f, h1 ? 0.6f : 0.9f);
+    drawText(cx - 50, cy + 3,   "[H]  Help", GLUT_BITMAP_HELVETICA_18);
+
+    // Exit
+    drawRect(btnX, cy - 110, btnW, btnH,
+             h2 ? 0.75f : 0.35f, h2 ? 0.15f : 0.05f, h2 ? 0.15f : 0.05f, 0.92f);
+    glColor3f(1.0f, h2 ? 0.6f : 0.85f, h2 ? 0.6f : 0.85f);
+    drawText(cx - 50, cy - 87,  "[E]  Exit", GLUT_BITMAP_HELVETICA_18);
+
+    end2D();
+}
+
+// ============================================================
+//  HELP PAGE
+// ============================================================
+void _Scene::drawHelpPage()
+{
+    begin2D();
+
+    drawRect(0, 0, wWidth, wHeight, 0.03f, 0.06f, 0.1f, 1.0f);
+
+    float cx = wWidth  / 2.0f;
+    float cy = wHeight / 2.0f;
+
+    // Panel
+    drawRect(cx - 380, cy - 220, 760, 500, 0.08f, 0.08f, 0.2f, 0.9f);
+
+    // Panel border
+    glColor3f(0.4f, 0.4f, 0.8f);
+    glLineWidth(2.0f);
+    glBegin(GL_LINE_LOOP);
+        glVertex2f(cx - 380, cy - 220);
+        glVertex2f(cx + 380, cy - 220);
+        glVertex2f(cx + 380, cy + 280);
+        glVertex2f(cx - 380, cy + 280);
+    glEnd();
+    glLineWidth(1.0f);
+
+    // Title
+    glColor3f(1.0f, 0.82f, 0.0f);
+    drawText(cx - 70, cy + 250, "HOW  TO  PLAY", GLUT_BITMAP_TIMES_ROMAN_24);
+
+    glColor3f(0.3f, 0.3f, 0.6f);
+    glBegin(GL_LINES);
+        glVertex2f(cx - 350, cy + 228); glVertex2f(cx + 350, cy + 228);
+    glEnd();
+
+    // Controls
+    float lx = cx - 340, rx = cx + 20;
+    float ly = cy + 190;
+    float sp = 32.0f;
+
+    auto row = [&](const char* key, const char* desc, float& y) {
+        glColor3f(0.4f, 0.9f, 0.4f);
+        drawText(lx, y, key, GLUT_BITMAP_HELVETICA_18);
+        glColor3f(0.9f, 0.9f, 0.9f);
+        drawText(rx, y, desc, GLUT_BITMAP_HELVETICA_18);
+        y -= sp;
+    };
+
+    row("W / S",           "Move Forward / Backward",     ly);
+    row("A / D",           "Strafe Left / Right",          ly);
+    row("Arrow Keys",      "Rotate Camera",                ly);
+    row("Right Mouse Drag","Mouse Look (aim)",             ly);
+    row("Left Click",      "SHOOT bullet",                 ly);
+    row("ESC (in game)",   "Pause game / Confirm Exit",    ly);
+
+    ly -= 10;
+    glColor3f(1.0f, 0.6f, 0.1f);
+    drawText(lx, ly, "OBJECTIVE:", GLUT_BITMAP_HELVETICA_18);
+    ly -= sp;
+    glColor3f(0.9f, 0.9f, 0.9f);
+    drawText(lx, ly, "Shoot the coloured crates falling from the sky.", GLUT_BITMAP_HELVETICA_18);
+    ly -= sp;
+    drawText(lx, ly, "Each hit scores +10 points. Survive as long as",  GLUT_BITMAP_HELVETICA_18);
+    ly -= sp;
+    drawText(lx, ly, "you can!",                                         GLUT_BITMAP_HELVETICA_18);
+
+    // Back hint
+    glColor3f(0.5f, 0.5f, 0.8f);
+    drawText(cx - 130, cy - 195, "Press  ESC  to return to Menu",
+             GLUT_BITMAP_HELVETICA_18);
+
+    end2D();
+}
+
+// ============================================================
+//  GAME SCENE
+// ============================================================
+void _Scene::startNewGame()
+{
+    score      = 0;
+    clickCount = 0;
+    cam->camReset();
+
+    for (int i = 0; i < 20; i++)
+    {
+        blts[i].isLive        = false;
+        blts[i].actionTrigger = _bullets::IDLE;
+        blts[i].t             = 0.0f;
+    }
+
+    for (int i = 0; i < NUM_OBJS; i++)
+    {
+        fallingObjs[i].spawn();
+        fallingObjs[i].pos.y += (float)(rand() % 200);
+    }
+
+    gameState = GAME;
+}
+
+void _Scene::updateBullets()
+{
+    for (int i = 0; i < 20; i++)
+        blts[i].update(deltaT);
+}
+
+void _Scene::checkCollisions()
+{
+    for (int b = 0; b < 20; b++)
+    {
+        if (!blts[b].isLive) continue;
+        for (int o = 0; o < NUM_OBJS; o++)
+        {
+            if (!fallingObjs[o].isAlive) continue;
+            if (myCollision->sphereSphere(blts[b].bpos,  1.0f,
+                                          fallingObjs[o].pos, fallingObjs[o].radius))
+            {
+                fallingObjs[o].kill();        // destroy object
+                blts[b].actionTrigger = _bullets::HIT;
+                blts[b].isLive        = false;
+                score += 10;
+                break;
+            }
+        }
+    }
+}
+
+void _Scene::drawGameScene()
+{
+    // -- 3-D camera setup
+    myLight->setLight(GL_LIGHT0);
+
+    glLoadIdentity();
+    cam->setUpCamera();
+
+    // -- Skybox (drawn without depth write so it's always behind)
+    glDepthMask(GL_FALSE);
+    sky->drawBox();
+    glDepthMask(GL_TRUE);
+
+    // -- Update & draw falling objects
+    glDisable(GL_LIGHTING);
+    for (int i = 0; i < NUM_OBJS; i++)
+    {
+        if (gameState == GAME)
+            fallingObjs[i].update(deltaT);
+        fallingObjs[i].draw();
+    }
+    glEnable(GL_LIGHTING);
+
+    // -- Update bullets & check collisions (only when not paused)
+    if (gameState == GAME)
+    {
+        updateBullets();
+        checkCollisions();
+    }
+
+    // -- Draw bullets
+    glDisable(GL_LIGHTING);
+    for (int i = 0; i < 20; i++) blts[i].drawBlt();
+    glEnable(GL_LIGHTING);
+
+    // -- HUD (2D overlay)
+    drawHUD();
+}
+
+void _Scene::drawHUD()
+{
+    begin2D();
+
+    // Score
+    std::ostringstream ss;
+    ss << "SCORE:  " << score;
+    glColor3f(1.0f, 1.0f, 0.2f);
+    drawText(20, wHeight - 35, ss.str().c_str(), GLUT_BITMAP_TIMES_ROMAN_24);
+
+    // Controls reminder (top-right)
+    glColor3f(0.7f, 0.7f, 0.7f);
+    drawText(wWidth - 240, wHeight - 30,  "WASD: Move",       GLUT_BITMAP_HELVETICA_12);
+    drawText(wWidth - 240, wHeight - 45,  "Arrows: Rotate",   GLUT_BITMAP_HELVETICA_12);
+    drawText(wWidth - 240, wHeight - 60,  "RMB Drag: Look",   GLUT_BITMAP_HELVETICA_12);
+    drawText(wWidth - 240, wHeight - 75,  "LMB: Shoot",       GLUT_BITMAP_HELVETICA_12);
+    drawText(wWidth - 240, wHeight - 90,  "ESC: Pause",       GLUT_BITMAP_HELVETICA_12);
+
+    // Crosshair
+    drawCrosshair();
+
+    // Simple gun silhouette bottom-right
+    drawGunModel();
+
+    end2D();
+}
+
+void _Scene::drawCrosshair()
+{
+    float cx = wWidth  / 2.0f;
+    float cy = wHeight / 2.0f;
+    float s  = 14.0f;
+
+    glLineWidth(2.0f);
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glBegin(GL_LINES);
+        glVertex2f(cx - s, cy); glVertex2f(cx + s, cy);
+        glVertex2f(cx, cy - s); glVertex2f(cx, cy + s);
+    glEnd();
+    glPointSize(3.0f);
+    glBegin(GL_POINTS);
+        glVertex2f(cx, cy);
+    glEnd();
+    glPointSize(1.0f);
+    glLineWidth(1.0f);
+}
+
+// Draw a simple 2-D gun silhouette in the bottom-right corner
+void _Scene::drawGunModel()
+{
+    float rx = wWidth  - 10.0f;
+    float ry = 10.0f;
+
+    glColor3f(0.3f, 0.3f, 0.3f);
+    // barrel
+    drawRect(rx - 200, ry + 50, 160, 18, 0.35f, 0.35f, 0.35f);
+    // body
+    drawRect(rx - 160, ry + 20, 120, 60, 0.28f, 0.28f, 0.28f);
+    // handle
+    drawRect(rx - 120, ry,       40, 35, 0.22f, 0.22f, 0.22f);
+    // scope
+    drawRect(rx - 180, ry + 68,  50, 16, 0.20f, 0.20f, 0.20f);
+}
+
+// ============================================================
+//  PAUSE POPUP
+// ============================================================
+void _Scene::drawPausePopup()
+{
+    begin2D();
+
+    float cx = wWidth  / 2.0f;
+    float cy = wHeight / 2.0f;
+
+    // Darken screen
+    drawRect(0, 0, wWidth, wHeight, 0.0f, 0.0f, 0.0f, 0.55f);
+
+    // Panel
+    drawRect(cx - 260, cy - 130, 520, 280, 0.08f, 0.08f, 0.22f, 0.95f);
+
+    // Border
+    glColor3f(0.6f, 0.3f, 0.3f);
+    glLineWidth(2.5f);
+    glBegin(GL_LINE_LOOP);
+        glVertex2f(cx - 260, cy - 130);
+        glVertex2f(cx + 260, cy - 130);
+        glVertex2f(cx + 260, cy + 150);
+        glVertex2f(cx - 260, cy + 150);
+    glEnd();
+    glLineWidth(1.0f);
+
+    // Title
+    glColor3f(1.0f, 0.35f, 0.35f);
+    drawText(cx - 80, cy + 110, "GAME  PAUSED", GLUT_BITMAP_TIMES_ROMAN_24);
+
+    glColor3f(0.4f, 0.4f, 0.7f);
+    glBegin(GL_LINES);
+        glVertex2f(cx - 230, cy + 90); glVertex2f(cx + 230, cy + 90);
+    glEnd();
+
+    // Confirm exit prompt
+    glColor3f(0.9f, 0.9f, 0.9f);
+    drawText(cx - 140, cy + 50, "Confirm Exit?", GLUT_BITMAP_TIMES_ROMAN_24);
+
+    // Yes button
+    drawRect(cx - 170, cy - 20, 140, 52, 0.65f, 0.15f, 0.15f, 0.92f);
+    glColor3f(1.0f, 0.9f, 0.9f);
+    drawText(cx - 145, cy + 6, "ENTER  =  Yes, Exit", GLUT_BITMAP_HELVETICA_18);
+
+    // No button
+    drawRect(cx +  30, cy - 20, 140, 52, 0.15f, 0.55f, 0.15f, 0.92f);
+    glColor3f(0.9f, 1.0f, 0.9f);
+    drawText(cx +  42, cy + 6, "ESC  =  No, Resume", GLUT_BITMAP_HELVETICA_18);
+
+    // Score reminder
+    std::ostringstream ss;
+    ss << "Current Score:  " << score;
+    glColor3f(1.0f, 1.0f, 0.4f);
+    drawText(cx - 90, cy - 95, ss.str().c_str(), GLUT_BITMAP_HELVETICA_18);
+
+    end2D();
+}
+
+// ============================================================
+//  Mouse 3-D mapping (kept for future use)
+// ============================================================
+void _Scene::mouseMapping(int x, int y)
+{
+    GLint    vp[4];
+    GLdouble mv[16], proj[16];
+    GLfloat  winX, winY, winZ;
+
+    glGetDoublev (GL_MODELVIEW_MATRIX,  mv);
+    glGetDoublev (GL_PROJECTION_MATRIX, proj);
+    glGetIntegerv(GL_VIEWPORT,          vp);
+
+    winX = (GLfloat)x;
+    winY = (GLfloat)vp[3] - (GLfloat)y;
+    glReadPixels(x, (int)winY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &winZ);
+    gluUnProject(winX, winY, winZ, mv, proj, vp, &mouse.x, &mouse.y, &mouse.z);
+}
+
+// ============================================================
+//  WndProc  –  state-machine input handler
+// ============================================================
+void _Scene::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    // Helper: convert Windows Y (top=0) to OpenGL Y (bottom=0)
+    auto oglY = [&](int wy) { return (int)wHeight - wy; };
+
+    switch (uMsg)
+    {
+    // ── Keyboard down ─────────────────────────────────────────────────
+    case WM_KEYDOWN:
+        switch (gameState)
+        {
+        case LANDING:
+            if (wParam == VK_RETURN) gameState = MENU;
+            break;
+
+        case MENU:
+            if (wParam == 'N' || wParam == 'n') startNewGame();
+            if (wParam == 'H' || wParam == 'h') gameState = HELP;
+            if (wParam == 'E' || wParam == 'e') PostQuitMessage(0);
+            break;
+
+        case HELP:
+            if (wParam == VK_ESCAPE) gameState = MENU;
+            break;
+
+        case GAME:
+            if (wParam == VK_ESCAPE) { gameState = PAUSE; break; }
+            keyMS->wParam = wParam;
+            keyMS->keyPressed(cam);   // WASD + arrows
+            break;
+
+        case PAUSE:
+            if (wParam == VK_RETURN)  PostQuitMessage(0);  // Yes – exit
+            if (wParam == VK_ESCAPE)  gameState = GAME;    // No  – resume
+            break;
+        }
+        break;
+
+    // ── Keyboard up ───────────────────────────────────────────────────
+    case WM_KEYUP:
+        break;
+
+    // ── Left / Right mouse button DOWN ────────────────────────────────
+    case WM_LBUTTONDOWN:
+        switch (gameState)
+        {
+        case LANDING:
+            gameState = MENU;
+            break;
+
+        case MENU:
+        {
+            int mx = (int)LOWORD(lParam);
+            int my = oglY((int)HIWORD(lParam));
+            mouseX = mx; mouseY = my;
+
+            if (inButton(mx, my, menuBtns[0])) { startNewGame();    break; }
+            if (inButton(mx, my, menuBtns[1])) { gameState = HELP;  break; }
+            if (inButton(mx, my, menuBtns[2])) { PostQuitMessage(0);break; }
+            break;
+        }
+
+        case GAME:
+        {
+            // Shoot a bullet in the camera forward direction
+            vec3 dst;
+            dst.x = cam->eye.x + cam->forward.x * 600.0;
+            dst.y = cam->eye.y + cam->forward.y * 600.0;
+            dst.z = cam->eye.z + cam->forward.z * 600.0;
+
+            blts[clickCount].shoot(cam->eye, dst, deltaT);
+            clickCount = (clickCount + 1) % 20;
+            // myMusic->playSounds("sounds/mcc.mp3");
+            break;
+        }
+
+        default: break;
+        }
+        break;
+
+    case WM_RBUTTONDOWN:
+        keyMS->mouseEvenDwn(LOWORD(lParam), HIWORD(lParam));
+        break;
+
+    // ── Mouse button UP ───────────────────────────────────────────────
+    case WM_LBUTTONUP:
+    case WM_RBUTTONUP:
+    case WM_MBUTTONUP:
+        keyMS->mouseUp();
+        break;
+
+    // ── Mouse move ────────────────────────────────────────────────────
+    case WM_MOUSEMOVE:
+    {
+        int wx = (int)LOWORD(lParam);
+        int wy = (int)HIWORD(lParam);
+
+        if (gameState == MENU)
+        {
+            mouseX = wx;
+            mouseY = oglY(wy);    // buttons stored in OpenGL Y coords
+        }
+        else if (gameState == GAME)
+        {
+            // Right-drag mouse look
+            keyMS->mouseMove(cam, (double)wx, (double)wy);
+        }
+        break;
+    }
+
+    // ── Mouse wheel ───────────────────────────────────────────────────
+    case WM_MOUSEWHEEL:
+        if (gameState == GAME)
+        {
+            float delta = (float)GET_WHEEL_DELTA_WPARAM(wParam) * 0.01f;
+            cam->step += delta * 0.05f;
+            if (cam->step < 0.1f) cam->step = 0.1f;
+            if (cam->step > 3.0f) cam->step = 3.0f;
+        }
+        break;
+
+    default: break;
+    }
+}

@@ -11,7 +11,7 @@ _abilities::_abilities() {
     isDashingState = false;
     canDash = true;
 
-    dashDuration = 0.25f;
+    dashDuration = 0.40f;     // long enough for a full JUMP animation cycle
     dashTimer = 0.0f;
 
     dashCooldown = 2.0f;
@@ -23,6 +23,7 @@ _abilities::_abilities() {
     canFart = true;
     fartCooldown = 2.0f;
     fartTimer = 0.0f;
+    fartAnimTimer = 0.0f;
 }
 
 void _abilities::handleInput(glm::vec3 moveDir, glm::vec3 playerPos) {
@@ -33,10 +34,12 @@ void _abilities::handleInput(glm::vec3 moveDir, glm::vec3 playerPos) {
     glm::vec3 dir = moveDir;
 
     if (glm::length(dir) == 0.0f)
-        dir = glm::normalize(glm::vec3(0,0,-1));
+        dir = glm::vec3(0,0,-1);
+    else
+        dir = glm::normalize(dir);
 
 
-        dashVelocity = glm::normalize(dir) * 80.0f;
+        dashVelocity = glm::normalize(dir) * 120.0f;
 
         isDashingState = true;
         canDash = false;
@@ -56,6 +59,7 @@ void _abilities::handleInput(glm::vec3 moveDir, glm::vec3 playerPos) {
 
         canFart = false;
         fartTimer = fartCooldown;
+        fartAnimTimer = 1.4f;   // play full ATTACK animation cycle
     }
 
 
@@ -103,6 +107,11 @@ void _abilities::update(float dt, glm::vec3& playerPos, glm::vec3 moveDir) {
             canFart = true;
         }
     }
+    if (fartAnimTimer > 0.0f) fartAnimTimer -= dt;
+}
+
+bool _abilities::isFartAnimating() {
+    return fartAnimTimer > 0.0f;
 }
 
 bool _abilities::isDashing() {

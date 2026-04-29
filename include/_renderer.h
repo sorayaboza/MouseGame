@@ -2,53 +2,49 @@
 #define _RENDERER_H
 
 #include "_ModelLoaderMD2.h"
+#include "_texloader.h"
 #include <vector>
 #include <glm/glm.hpp>
 
-// -------- PLAYER RENDER DATA --------
+// Player – animated MD2 model (rat)
 struct PlayerRenderData {
-    glm::vec3 pos;
-    float rotY;
-
+    glm::vec3        pos;
+    float            rotY;
     _ModelLoaderMD2* model;
 };
 
-// -------- FOOD RENDER DATA --------
+// Food – billboard textured quad
 struct FoodRenderData {
-    glm::vec3 pos;
-    float rotY;
-
-    _ModelLoaderMD2* model;
+    glm::vec3   pos;
+    float       size;
+    _texLoader* texture;
 };
 
-// -------- FART RENDER DATA --------
+// Fart cloud
 struct FartRenderData {
     glm::vec3 pos;
+    float     life;
 };
 
-
-// -------- FRAME DATA --------
 struct FrameRenderData {
-    PlayerRenderData player;
-    std::vector<FoodRenderData>* foods;
-
-    std::vector<FartRenderData>* farts;
+    PlayerRenderData              player;
+    std::vector<FoodRenderData>*  foods;
+    std::vector<FartRenderData>*  farts;
 
     glm::vec3 mouseHolePos;
-    float mouseHoleRadius;
+    float     mouseHoleRadius;
+    glm::vec3 cameraPos;
 };
-
 
 class _renderer {
 public:
     _renderer();
     ~_renderer();
-
     void renderFrame(FrameRenderData& frame);
 
 private:
-    void drawPlayer(const PlayerRenderData& player);
-    void drawFood(const FoodRenderData& food);
+    void drawPlayer(const PlayerRenderData& p);
+    void drawFoodBillboard(const FoodRenderData& food, const glm::vec3& camPos);
     void drawFart(const FartRenderData& fart);
     void drawMouseHole(const glm::vec3& pos, float radius);
 };

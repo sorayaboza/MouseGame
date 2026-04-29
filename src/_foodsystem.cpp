@@ -1,131 +1,86 @@
+// ================================================================
+//  _foodsystem.cpp  –  Spawns and manages multiple food billboards
+// ================================================================
 #include "_foodsystem.h"
 #include <cmath>
 #include <iostream>
 
-_foodsystem::_foodsystem() { /* ctor */ }
-_foodsystem::~_foodsystem() { /* dtor */ }
+_foodsystem::_foodsystem() {}
+_foodsystem::~_foodsystem() {}
 
-void _foodsystem::init(_skyBox* skyRef) {
-    sky = skyRef;
-}
+void _foodsystem::init(_skyBox* skyRef) { sky = skyRef; }
 
-// Create several food objects that fall and bounce inside the sky box.
-void _foodsystem::spawnFoods(int numFoods) {
-    // List of possible food models
+// ================================================================
+//  spawnFoods – mix of 5 food types: banana, cheese, donut, milk, melon
+// ================================================================
+void _foodsystem::spawnFoods(int numFoods)
+{
     struct FoodType {
-        std::string model;
         std::string texture;
-        float scale;
+        float       size;
+        int         id;
     };
-
     std::vector<FoodType> foodTypes = {
-        {"models/milk/tris.md2", "images/milk.png", 0.8f},
-        {"models/milk/tris.md2",  "images/milk.png",  1.2f}
+        { "images/banana.png", 5.0f, 0 },
+        { "images/cheese.png", 5.5f, 1 },
+        { "images/donut.png",  4.8f, 2 },
+        { "images/milk.png",   6.5f, 3 },
+        { "images/wmelon.png", 6.5f, 4 }
     };
 
-    // Determine playable boundaries from sky box size
     float skyBottomY = sky->pos.y - sky->scale.y * 0.5f;
-    float floorY = skyBottomY + 1.0f; // 1 unit above bottom
+    float floorY     = skyBottomY + 1.0f;
+    float halfX      = sky->scale.x * 0.45f;
+    float halfZ      = sky->scale.z * 0.45f;
 
-    float halfX = sky->scale.x * 0.5f;
-    float halfZ = sky->scale.z * 0.5f;
-
-    for(int i=0; i<numFoods; i++) {
+    for (int i = 0; i < numFoods; i++) {
         FoodType type = foodTypes[rand() % foodTypes.size()];
-        _food* newFood = new _food(type.model, type.scale);
 
-        newFood->physics.pos.x = ((rand()%100)/100.0f)*(2*halfX)-halfX; // Random X position inside sky box bounds
-        newFood->physics.pos.z = ((rand()%100)/100.0f)*(2*halfZ)-halfZ; // Random Z position inside sky box bounds
-
-        float spawnHeight = floorY + 40.0f;  // spawn 20 units above the floor
-        newFood->physics.pos.y = spawnHeight;
-
-        foods.push_back(newFood); // Store food in vector so it can be updated/drawn later
+        _food* newFood = new _food(type.texture, type.size, type.id);
+        newFood->physics.pos.x = ((rand()%200)/100.0f - 1.0f) * halfX;
+        newFood->physics.pos.z = ((rand()%200)/100.0f - 1.0f) * halfZ;
+        newFood->physics.pos.y = floorY + 30.0f + (rand()%40);  // stagger drop
+        foods.push_back(newFood);
     }
-
 }
 
-/* handleCollisions()
-
-    Detects collisions between food objects using sphere collision.
-
-    Steps:
-    1. Compute distance between food centers.
-    2. If distance < combined radius, collision occurred.
-    3. Push the objects apart along the collision normal.
-    4. Apply a collision impulse so momentum transfers between foods.
-       This causes both objects to react naturally when they collide.
-*/
-void _foodsystem::handleCollisions() {
-
-    float radius = 2.0f; // collision radius for each food
-
-    // Compare every pair of foods
+// ================================================================
+//  handleCollisions – food vs food (sphere)
+// ================================================================
+void _foodsystem::handleCollisions()
+{
     for (size_t i = 0; i < foods.size(); i++) {
         for (size_t j = i + 1; j < foods.size(); j++) {
-
             _food* a = foods[i];
             _food* b = foods[j];
 
-            // Vector from food B to food A
             float dx = a->physics.pos.x - b->physics.pos.x;
             float dy = a->physics.pos.y - b->physics.pos.y;
             float dz = a->physics.pos.z - b->physics.pos.z;
+            float dist = sqrtf(dx*dx + dy*dy + dz*dz);
 
-            // Distance between food centers
-            float dist = sqrt(dx*dx + dy*dy + dz*dz);
-
-            // Minimum distance before collision occurs
-            float minDist = radius * 2.0f;
-
-            // Check if foods are intersecting
+            float minDist = a->collisionRadius + b->collisionRadius;
             if (dist < minDist && dist > 0.0001f) {
-
-                // Normalize the collision direction (collision normal)
-                float nx = dx / dist;
-                float ny = dy / dist;
-                float nz = dz / dist;
-
-                // Amount the objects overlap
+                float nx = dx / dist, ny = dy / dist, nz = dz / dist;
                 float overlap = minDist - dist;
 
-                // Push objects apart equally so they no longer intersect
                 a->physics.pos.x += nx * overlap * 0.5f;
                 a->physics.pos.y += ny * overlap * 0.5f;
                 a->physics.pos.z += nz * overlap * 0.5f;
-
                 b->physics.pos.x -= nx * overlap * 0.5f;
                 b->physics.pos.y -= ny * overlap * 0.5f;
                 b->physics.pos.z -= nz * overlap * 0.5f;
 
-                // --- Collision Physics ---
-
-                // Relative velocity between the two foods
                 float rvx = a->physics.velocity.x - b->physics.velocity.x;
                 float rvy = a->physics.velocity.y - b->physics.velocity.y;
                 float rvz = a->physics.velocity.z - b->physics.velocity.z;
-
-                // Velocity along the collision normal
                 float velAlongNormal = rvx*nx + rvy*ny + rvz*nz;
+                if (velAlongNormal > 0) continue;
 
-                // If objects are moving away from each other, skip resolution
-                if (velAlongNormal > 0)
-                    continue;
-
-                // Coefficient of restitution (bounciness)
-                float bounce = 1.0f;
-
-                // Calculate collision impulse
-                float impulse = -(1 + bounce) * velAlongNormal;
-
-                // Divide impulse for equal-mass objects
-                impulse *= 0.5f;
-
-                // Apply impulse to both foods (equal and opposite forces)
+                float impulse = -(1 + 0.6f) * velAlongNormal * 0.5f;
                 a->physics.velocity.x += impulse * nx;
                 a->physics.velocity.y += impulse * ny;
                 a->physics.velocity.z += impulse * nz;
-
                 b->physics.velocity.x -= impulse * nx;
                 b->physics.velocity.y -= impulse * ny;
                 b->physics.velocity.z -= impulse * nz;
@@ -134,149 +89,135 @@ void _foodsystem::handleCollisions() {
     }
 }
 
-void _foodsystem::update(float dt, float floorY) {
+// ================================================================
+// ================================================================
+//  update – moves food, applies friction, keeps food away from walls
+//
+//  Food is NOT allowed to touch the walls.  Instead of collision /
+//  bouncing (which can leave food stuck against an edge), we use a
+//  soft inward force that pushes food away from any wall it gets
+//  too close to.  The result: food always drifts back toward the
+//  center of the room, never gets stuck, and the player can always
+//  reach it from any side.
+// ================================================================
+void _foodsystem::update(float dt, float floorY)
+{
+    // Food must stay inside the actual room walls (skybox is 0.5 × scale
+    // from origin to wall).  Using 0.50 here lets food roll all the way
+    // to the back wall where the mouse hole sits — using 0.45 (as it was
+    // before) created a 60-unit dead zone that food could never cross.
+    float halfX  = sky->scale.x * 0.50f;
+    float halfZ  = sky->scale.z * 0.50f;
+    float buffer = 4.0f;     // visible margin so food never touches the wall
+
     for (auto& food : foods) {
         food->update(dt, floorY);
-        food->physics.velocity.x *= pow(0.99f, dt * 60.0f);
-        food->physics.velocity.z *= pow(0.99f, dt * 60.0f);
+
+        float r = food->collisionRadius;
+
+        // ── Keep the food's bounding sphere fully inside the room ──
+        // The food's rightmost edge is pos.x + r, leftmost is pos.x - r,
+        // and the room's inner walls are at ±(halfX - buffer).
+        // Solve for pos.x:  pos.x + r ≤ halfX - buffer  →  pos.x ≤ halfX - buffer - r
+        //                   pos.x - r ≥ -halfX + buffer →  pos.x ≥ -halfX + buffer + r
+        float maxX = halfX - buffer - r;
+        float minX = -halfX + buffer + r;
+        float maxZ = halfZ - buffer - r;
+        float minZ = -halfZ + buffer + r;
+
+        // Hard clamp + kill any velocity heading further outward
+        if (food->physics.pos.x > maxX) {
+            food->physics.pos.x = maxX;
+            if (food->physics.velocity.x > 0) food->physics.velocity.x = 0;
+        }
+        if (food->physics.pos.x < minX) {
+            food->physics.pos.x = minX;
+            if (food->physics.velocity.x < 0) food->physics.velocity.x = 0;
+        }
+        if (food->physics.pos.z > maxZ) {
+            food->physics.pos.z = maxZ;
+            if (food->physics.velocity.z > 0) food->physics.velocity.z = 0;
+        }
+        if (food->physics.pos.z < minZ) {
+            food->physics.pos.z = minZ;
+            if (food->physics.velocity.z < 0) food->physics.velocity.z = 0;
+        }
+
+        // Friction
+        food->physics.velocity.x *= powf(0.99f, dt * 60.0f);
+        food->physics.velocity.z *= powf(0.99f, dt * 60.0f);
     }
 }
 
-// Detects collision with food and mouse hole.
-void _foodsystem::checkFoodInHole(glm::vec3 holePos, float holeRadius, int& score, float dt) {
-    float magnetRadius = 30.0f;   // how far the magnet reaches
-    float magnetStrength = 70.0f; // how strong the pull is
+// ================================================================
+//  checkFoodInHole – removes food when it enters the hole
+//                    plus magnet effect that pulls food in
+// ================================================================
+void _foodsystem::checkFoodInHole(glm::vec3 holePos, float holeRadius,
+                                   int& score, float dt)
+{
+    // ── Magnet effect: pull food toward the hole ─────────────────
+    // Subtle pull so food has to be actively pushed close to the hole
+    // before it gets sucked in.  No more grabbing food across the room.
+    float magnetRadius   = 60.0f;
+    float magnetStrength = 200.0f;
 
-    for (size_t i = 0; i < foods.size(); /* no i++ here */) {
+    for (size_t i = 0; i < foods.size(); ) {
         _food* food = foods[i];
-
-        // Compute vector from hole center to food
         float dx = food->physics.pos.x - holePos.x;
-        //float dy = food->physics.pos.y - mouseHolePos.y;
         float dz = food->physics.pos.z - holePos.z;
+        float dist = sqrtf(dx*dx + dz*dz);
 
-        float dist = sqrt(dx*dx + dz*dz);
-        // float dist = sqrt(dx*dx + dy*dy + dz*dz); // with y version
-
-        // If food is inside hole
         if (dist < holeRadius) {
-            // Food has entered the hole!
-            foods.erase(foods.begin() + i); // 1. Remove from the foods vector
-            delete food; // 2. Delete the food object
-            score += 1; // 3. Increment score or trigger event
-            cout << "SCORE: " << score << endl;
-
-            // Do NOT increment i since we erased an element
+            foods.erase(foods.begin() + i);
+            delete food;
+            score += 10;          // 10 points per food
+            std::cout << "SCORE: " << score << std::endl;
             continue;
         }
-
-        i++; // Only increment if food wasn't removed
+        i++;
 
         if (dist < magnetRadius && dist > 0.001f) {
-            float nx = -dx / dist; // direction TOWARD hole
-            float nz = -dz / dist;
-
-            // stronger when closer (feels nice)
+            float nx = -dx / dist, nz = -dz / dist;
             float t = 1.0f - (dist / magnetRadius);
-
-            t = t * t; // square it for stronger pull near center
-
+            t = t * t;
             float strength = magnetStrength * t;
-
-            // apply pull
             food->physics.velocity.x += nx * strength * dt;
             food->physics.velocity.z += nz * strength * dt;
         }
     }
 }
 
-// Detects collisions between foods and the player.
-void _foodsystem::handlePlayerCollisions(_player* player, glm::vec3 playerMoveDir) {
-    float halfX = sky->scale.x * 0.50f;  // skybox X boundary
-    float halfZ = sky->scale.z * 0.50f;  // skybox Z boundary
-    float foodRadius = 2.0f;   // size of the food collision cube/sphere
-    float radius = 2.0f; // collision radius
+// ================================================================
+//  handlePlayerCollisions – player pushes food, walls bounce food
+// ================================================================
+void _foodsystem::handlePlayerCollisions(_player* player,
+                                          glm::vec3 playerMoveDir)
+{
+    // Note: walls deliberately do NOT block food.  Player movement is
+    // clamped against walls in the scene; food can drift past the
+    // visual wall boundary without getting stuck against it.  This
+    // lets the player always reach food and push it back toward the
+    // hole without the food locking up against an edge.
+    float playerRadius = 2.0f;
 
     for (auto& food : foods) {
+        float foodR = food->collisionRadius;
 
-        // Vector from player to food
         float dx = food->physics.pos.x - player->physics.pos.x;
-        float dy = 0.0f; // Keeps food ground-based
         float dz = food->physics.pos.z - player->physics.pos.z;
+        float dist = sqrtf(dx*dx + dz*dz);
 
-        float dist = sqrt(dx*dx + dy*dy + dz*dz);
-        float minDist = radius * 2.0f;
-
+        float minDist = foodR + playerRadius;
         if (dist < minDist && dist > 0.0001f) {
-            // Normalize push direction
-            float nx = dx / dist;
-            float ny = dy / dist;
-            float nz = dz / dist;
-
-            // Separate the objects
+            float nx = dx / dist, nz = dz / dist;
             float overlap = minDist - dist;
-
             food->physics.pos.x += nx * overlap;
-            food->physics.pos.y += ny * overlap;
             food->physics.pos.z += nz * overlap;
 
-            // Apply push velocity from the player
-            float pushStrength = 6.0f;
-
+            float pushStrength = 7.5f;
             food->physics.velocity.x += playerMoveDir.x * pushStrength;
             food->physics.velocity.z += playerMoveDir.z * pushStrength;
-        }
-
-        // Sky box boundary: Keeps food inside the world
-        if (food->physics.pos.x - foodRadius < -halfX) {
-            food->physics.pos.x = -halfX + foodRadius;
-            food->physics.velocity.x *= -0.9f;
-        }
-        if (food->physics.pos.x + foodRadius > halfX) {
-            food->physics.pos.x = halfX - foodRadius;
-            food->physics.velocity.x *= -0.9f;
-        }
-        if (food->physics.pos.z - foodRadius < -halfZ) {
-            food->physics.pos.z = -halfZ + foodRadius;
-            food->physics.velocity.z *= -0.9f;
-        }
-        if (food->physics.pos.z + foodRadius > halfZ) {
-            food->physics.pos.z = halfZ - foodRadius;
-            food->physics.velocity.z *= -0.9f;
-        }
-
-        float cornerRadius = 6.0f;
-
-        glm::vec3 corners[4] = {
-            { -halfX, 0, -halfZ },
-            {  halfX, 0, -halfZ },
-            { -halfX, 0,  halfZ },
-            {  halfX, 0,  halfZ }
-        };
-
-        for (int i = 0; i < 4; i++) {
-            float dx = food->physics.pos.x - corners[i].x;
-            float dz = food->physics.pos.z - corners[i].z;
-
-            float dist = sqrt(dx*dx + dz*dz);
-
-            if (dist < cornerRadius && dist > 0.0001f) {
-                float nx = dx / dist;
-                float nz = dz / dist;
-
-                float overlap = cornerRadius - dist;
-
-                food->physics.pos.x += nx * overlap;
-                food->physics.pos.z += nz * overlap;
-
-                float bounce = 0.6f;
-                float dot = food->physics.velocity.x * nx + food->physics.velocity.z * nz;
-
-                if (dot < 0) {
-                    food->physics.velocity.x -= (1 + bounce) * dot * nx;
-                    food->physics.velocity.z -= (1 + bounce) * dot * nz;
-                }
-            }
         }
     }
 }

@@ -9,10 +9,11 @@ public:
     _ui();
     ~_ui();
 
+    // HUD drawn during gameplay (called from _scene::drawScene)
     void draw(int width, int height,
               int score,
-              float dashTimer, float dashCooldown, bool canDash,
-              float fartTimer, float fartCooldown, bool canFart);
+              float dashTimer,  float dashCooldown,  bool canDash,
+              float fartTimer,  float fartCooldown,  bool canFart);
 
 private:
     void drawText(float x, float y, const std::string& text);

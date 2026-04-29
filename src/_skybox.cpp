@@ -3,7 +3,7 @@
 _skyBox::_skyBox() {
     //ctor
     rot = {0,0,0};
-    scale = {150,200,150};
+    scale = {220,220,220};
     pos = {0,0,0};
 }
 
@@ -39,8 +39,8 @@ void _skyBox::drawBox() {
        myTex[1].BindTex();
        glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,(void*)(6*sizeof(unsigned int))); //back face
        myTex[2].BindTex();
-       //glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,(void*)(12*sizeof(unsigned int)));//top face
-       //myTex[3].BindTex();
+       glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,(void*)(12*sizeof(unsigned int)));//top face
+       myTex[3].BindTex();
        glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,(void*)(18*sizeof(unsigned int)));//bottom face
        myTex[4].BindTex();
        glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,(void*)(24*sizeof(unsigned int)));//left face

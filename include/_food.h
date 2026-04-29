@@ -2,26 +2,29 @@
 #define _FOOD_H
 
 #include <string>
-#include <_ModelLoaderMD2.h>
 #include <_physicsobject.h>
 #include <_texloader.h>
 
-// Represents a food item in the game.
+// ================================================================
+//  _food  –  A food item rendered as a textured billboard
+//
+//  foodType: 0=banana, 1=cheese, 2=donut, 3=milk, 4=watermelon
+// ================================================================
 class _food {
 public:
-    _food(const std::string& modelPath, float scale);
+    _food(const std::string& texturePath, float displaySize, int type);
     ~_food();
 
     void update(float dt, float floorY);
 
-    _ModelLoaderMD2* model;
+    _texLoader* texture;     // billboard texture
+    int         foodType;
+    float       displaySize; // height of the billboard quad
+    float       collisionRadius;
+
     _physicsobject physics;
 
-    float collisionRadius = 2.0f;
-
-    struct {
-        float y = 0;
-    } rot;
+    struct { float y = 0; } rot;  // (kept for compat – not used by billboard)
 };
 
 #endif // _FOOD_H

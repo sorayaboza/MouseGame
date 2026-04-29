@@ -28,10 +28,12 @@ public:
     bool canFart;
     float fartTimer;
     float fartCooldown;
+    float fartAnimTimer;        // counts down while ATTACK animation plays
     std::vector<Fart> farts;
 
     // dash movement output
     bool isDashing();
+    bool isFartAnimating();
 
 private:
     // INPUT STATE

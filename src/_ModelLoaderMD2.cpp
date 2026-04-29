@@ -243,22 +243,6 @@ void _ModelLoaderMD2::RenderFrameItpWithGLCmds(int n, float interp, const struct
 }
 
 
-void _ModelLoaderMD2::Animate(int start, int end, int* frame, float* interp)
-{
-     if ((*frame < start) || (*frame > end))
-    *frame = start;
-
-    if (*interp >= 1.0f)
-    {
-      /* Move to next frame */
-      *interp = 0.0f;
-      (*frame)++;
-
-      if (*frame >= end)
-	*frame = start;
-    }
-}
-
 void _ModelLoaderMD2::initModel(const char* filename,char* ifile) {
     /* Load MD2 model file */
     if (!ReadMD2Model(filename, ifile, &md2file)) {
@@ -269,18 +253,37 @@ void _ModelLoaderMD2::initModel(const char* filename,char* ifile) {
 
 
 void _ModelLoaderMD2::Draw() {
-  static int n = 0; /* The current frame */
-  static double curent_time = 0;
-  static double last_time = 0;
+  // Use INSTANCE variables (current_time, last_time, currentFrame, interp)
+  // so multiple MD2 models don't fight over the same statics.
+  last_time    = current_time;
+  current_time = (double)glutGet (GLUT_ELAPSED_TIME) / 1000.0;
+  if (last_time == 0) last_time = current_time;   // first frame edge case
 
-  last_time = curent_time;
-  curent_time = (double)glutGet (GLUT_ELAPSED_TIME) / 1000.0;
+  // Animate model.  Rate of 6 fps gives a smooth, readable animation
+  // without flickering; 10 was too fast and made cycles feel jittery.
+  interp += 6.0f * (float)(current_time - last_time);
+  Animate (StartFrame, EndFrame, &currentFrame, &interp);
 
-  /* Animate model from frames 0 to num_frames-1 */
-  interp += 10 * (curent_time - last_time);
-  Animate (StartFrame, EndFrame, &n, &interp);
+  RenderFrameItpWithGLCmds (currentFrame, interp, &md2file);
+}
 
-   RenderFrameItpWithGLCmds (n, interp, &md2file);
+void _ModelLoaderMD2::Animate(int start, int end, int* frame, float* interp)
+{
+    // Snap into range
+    if ((*frame < start) || (*frame > end))
+        *frame = start;
+
+    if (*interp >= 1.0f)
+    {
+      /* Move to next frame */
+      *interp = 0.0f;
+      (*frame)++;
+
+      // Wrap AFTER passing the end frame, not on reaching it.
+      // Old code used >= which skipped the last frame entirely.
+      if (*frame > end)
+        *frame = start;
+    }
 }
 
 void _ModelLoaderMD2::actions()
@@ -295,6 +298,16 @@ void _ModelLoaderMD2::actions()
         case RUN:
             StartFrame = 40;
             EndFrame   = 45;
+            break;
+
+        case ATTACK:
+            StartFrame = 46;
+            EndFrame   = 53;
+            break;
+
+        case PAIN:
+            StartFrame = 54;
+            EndFrame   = 65;
             break;
 
         case JUMP:

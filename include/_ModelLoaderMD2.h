@@ -112,7 +112,7 @@ public: /* Table of precalculated normals */
     double current_time = 0;
     double last_time = 0;
 
-    enum {STAND, WALKLEFT,WALKRIGHT,RUN,JUMP, ATTACK};
+    enum {STAND, WALKLEFT,WALKRIGHT,RUN,JUMP, ATTACK, PAIN};
 private:
     GLfloat s, t;
     int i, *pglcmds;
