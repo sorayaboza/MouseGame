@@ -1,6 +1,9 @@
 ### Game Credits
 Game made by **Soraya Boza** and **Harshil Taunk**.
 
+<img width="400" height="225" alt="Mouse Heist Demo" src="https://github.com/user-attachments/assets/9a19e920-8b20-46a0-92a8-993593c2ce39" />
+
+
 #### Soraya Boza
 * **Roles**: Team lead, programmer, artist, tester, game designer.
 * **Team leaf / Game designer**: Made all creative decisions (except for the idea to add an ability).
