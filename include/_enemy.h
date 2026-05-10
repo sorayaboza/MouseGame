@@ -22,6 +22,11 @@ public:
     State state;
     Type  type;
 
+    // SFX edge-trigger: set true the frame we transition into CHASE.
+    // Scene polls this each frame and resets via consumeSfxFlag().
+    bool  chaseJustStarted;
+    void  consumeSfxFlag() { chaseJustStarted = false; }
+
     glm::vec3 pos;
     float     facingAngle;
     glm::vec3 facing;

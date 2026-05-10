@@ -115,6 +115,7 @@ int _ModelLoaderMD2::ReadMD2Model(const char* filename,char *iFileName, struct m
     mdl->tex_id = myTex->texID;
     EndFrame = mdl->header.num_frames-1;
 
+/* // Seeing which models are loaded
     std::string modelName = filename;
 
     if (printedModels.find(modelName) == printedModels.end()) {
@@ -125,6 +126,7 @@ int _ModelLoaderMD2::ReadMD2Model(const char* filename,char *iFileName, struct m
 
         printedModels.insert(modelName);
     }
+*/
 
   fclose (fp);
   cout << "Loaded MD2 successfully!" << endl;
@@ -249,6 +251,15 @@ void _ModelLoaderMD2::initModel(const char* filename,char* ifile) {
         cout << "Failed to load model: " << filename << endl;
         return;
     }
+}
+
+// Fast texture-only swap.  Doesn't touch the MD2 geometry so it's
+// much cheaper than re-running initModel() when the only thing
+// changing is the skin (e.g., between levels).
+void _ModelLoaderMD2::setTexture(const char* texturePath) {
+    if (!texturePath || !*texturePath) return;
+    myTex->loadTexture(texturePath);
+    md2file.tex_id = myTex->texID;
 }
 
 

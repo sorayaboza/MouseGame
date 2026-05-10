@@ -362,10 +362,11 @@ int WINAPI WinMain(
 
 	  else						        // If There Are No Messages
 		{
-			// Draw The Scene.  Watch For ESC Key And Quit Messages From DrawGLScene()
-			if (!active || keys[VK_ESCAPE])	// Active?  Was There A Quit Received?
+			// Watch only for window-close (PostQuitMessage); ESC is now
+			// handled by the scene to open the pause menu instead of quitting.
+			if (!active)
 			{
-				done=TRUE;		        // ESC or DrawGLScene Signalled A Quit
+				done=TRUE;		        // Window closed
 			}
 			else				        // Not Time To Quit, Update Screen
 			{

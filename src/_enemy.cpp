@@ -21,7 +21,9 @@ static float randFloat(float lo, float hi) {
 }
 
 _enemy::_enemy()
-    : state(PATROL), type(TYPE_CAT), facingAngle(0.0f),
+    : state(PATROL), type(TYPE_CAT),
+      chaseJustStarted(false),
+      facingAngle(0.0f),
       patrolSpeed(18.0f), chaseSpeed(40.0f),
       fovHalfAngle(0.87f), fovRange(90.0f),
       catchRadius(7.0f), distractRadius(30.0f),
@@ -38,20 +40,20 @@ void _enemy::init(int level, Type t)
 {
     type = t;
     if (type == TYPE_CAT) {
-        model->initModel("models/Nightcrawler/tris.md2",
-                         (char*)"models/Nightcrawler/NightC.jpg");
+        // Don't load the model here – _leveltheme::apply() loads the
+        // model + texture immediately after with the correct skin
+        // for this level.  Loading twice cost ~50ms per enemy on
+        // every level transition and was a major source of ENTER lag.
         modelScale     = 0.40f;
-        patrolSpeed    = 16.0f + level * 5.0f;
-        chaseSpeed     = 36.0f + level * 12.0f;
+        patrolSpeed    = 35.0f + level * 5.0f;
+        chaseSpeed     = 70.0f + level * 12.0f;
         fovRange       = 80.0f + level * 12.0f;
         fovHalfAngle   = 0.80f + level * 0.06f;
         catchRadius    = 8.0f;
     } else {
-        model->initModel("models/awolf/tris.md2",
-                         (char*)"models/awolf/wolfskin.jpg");
         modelScale     = 0.35f;
-        patrolSpeed    = 12.0f + level * 3.0f;
-        chaseSpeed     = 28.0f + level * 8.0f;
+        patrolSpeed    = 35.0f + level * 3.0f;
+        chaseSpeed     = 65.0f + level * 8.0f;
         fovRange       = 60.0f + level * 8.0f;
         fovHalfAngle   = 0.65f + level * 0.04f;
         catchRadius    = 6.0f;
@@ -122,7 +124,11 @@ bool _enemy::update(float dt,
     }
     // ── PATROL state – RUN animation ─────────────────────────────
     else {
-        if (sees) { state = CHASE; lostTimer = 0; }
+        if (sees) {
+            state = CHASE;
+            lostTimer = 0;
+            chaseJustStarted = true;   // SFX edge trigger
+        }
         else {
             // Predict next position
             float nextX = pos.x + facing.x * patrolSpeed * dt;
@@ -254,6 +260,66 @@ void _enemy::drawLOS()
     }
     glVertex3f(pos.x, baseY, pos.z);
     glEnd();
+    glLineWidth(1.0f);
+
+        // ============================================================
+    // INNER FART DISTRACTION RANGE
+    // Smaller cone showing fart detection distance
+    // ============================================================
+
+    float fartAlpha = 0.30f;
+
+    // Greenish-yellow tint so it differs from the main LOS
+    glColor4f(0.85f, 1.0f, 0.20f, fartAlpha);
+
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex3f(pos.x, baseY + 0.05f, pos.z);
+
+    for (int i = 0; i <= segs; i++) {
+
+        float t = (float)i / segs;
+
+        float a = facingAngle
+                - fovHalfAngle
+                + 2.0f * fovHalfAngle * t;
+
+        glVertex3f(
+            pos.x + distractRadius * sinf(a),
+            baseY + 0.05f,
+            pos.z + distractRadius * cosf(a)
+        );
+    }
+
+    glEnd();
+
+    // Outline
+    glColor4f(0.95f, 1.0f, 0.30f, 0.8f);
+
+    glLineWidth(2.0f);
+
+    glBegin(GL_LINE_STRIP);
+
+    glVertex3f(pos.x, baseY + 0.05f, pos.z);
+
+    for (int i = 0; i <= segs; i++) {
+
+        float t = (float)i / segs;
+
+        float a = facingAngle
+                - fovHalfAngle
+                + 2.0f * fovHalfAngle * t;
+
+        glVertex3f(
+            pos.x + distractRadius * sinf(a),
+            baseY + 0.05f,
+            pos.z + distractRadius * cosf(a)
+        );
+    }
+
+    glVertex3f(pos.x, baseY + 0.05f, pos.z);
+
+    glEnd();
+
     glLineWidth(1.0f);
 
     glDepthMask(GL_TRUE);

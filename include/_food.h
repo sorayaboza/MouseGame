@@ -18,6 +18,9 @@ public:
     void update(float dt, float floorY);
 
     _texLoader* texture;     // billboard texture
+
+    std::string texturePath;
+
     int         foodType;
     float       displaySize; // height of the billboard quad
     float       collisionRadius;

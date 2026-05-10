@@ -4,7 +4,10 @@ _texLoader::_texLoader() { /*ctor*/ }
 _texLoader::~_texLoader() { /*dtor*/ }
 
 void _texLoader::loadTexture(const char* fileName) {
-    glGenTextures(1, &texID);
+    // Reuse existing texture ID if one already exists – avoids leaking
+    // a fresh GPU handle every level transition (we re-skin walls etc.
+    // on every startLevel and used to leak ~6 textures per call).
+    if (texID == 0) glGenTextures(1, &texID);
     glBindTexture(GL_TEXTURE_2D, texID);
 
     image = SOIL_load_image(fileName, &width, &height, 0, SOIL_LOAD_RGBA);
@@ -15,10 +18,6 @@ void _texLoader::loadTexture(const char* fileName) {
     SOIL_free_image_data(image);
 
     // ── Sharp filtering WITHOUT mipmaps ──
-    // Mipmaps + transparent PNG edges create dark halos because the
-    // generated mip levels average colour with alpha=0 transparent pixels,
-    // and alpha-test then rejects everything → black food at distance.
-    // Plain GL_LINEAR keeps full alpha at edges so PNGs render clean.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 

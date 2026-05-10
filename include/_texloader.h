@@ -11,7 +11,7 @@ class _texLoader
         virtual ~_texLoader();
         int width,height; // keep track of image dimensions
         unsigned char* image;
-        GLuint texID;
+        GLuint texID = 0;
 
         void loadTexture(const char*);
         void BindTex();

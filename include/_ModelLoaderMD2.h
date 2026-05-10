@@ -100,6 +100,10 @@ public: /* Table of precalculated normals */
     ~_ModelLoaderMD2();
 
     void initModel(const char *filename,char*);
+    // Reload only the model's texture, leaving geometry intact.
+    // Much faster than initModel() when the model is the same but
+    // the skin needs to swap (e.g., between levels).
+    void setTexture(const char* texturePath);
     void Draw();
     void setFrame(int frame);
     void actions();

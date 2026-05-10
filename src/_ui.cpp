@@ -16,6 +16,14 @@ void _ui::draw(int width, int height,
                float dashTimer, float dashCooldown, bool canDash,
                float fartTimer, float fartCooldown, bool canFart)
 {
+    // ── Defensive state reset – ensures the panel reads clearly
+    //     no matter what texture/blend state was left over from
+    //     the 3-D scene rendering.
+    glDisable(GL_TEXTURE_2D);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 

@@ -5,7 +5,7 @@
 #include <cmath>
 #include <iostream>
 
-_foodsystem::_foodsystem() {}
+_foodsystem::_foodsystem() : foodCollectedThisFrame(0), megaHitsThisFrame(0) {}
 _foodsystem::~_foodsystem() {}
 
 void _foodsystem::init(_skyBox* skyRef) { sky = skyRef; }
@@ -13,32 +13,90 @@ void _foodsystem::init(_skyBox* skyRef) { sky = skyRef; }
 // ================================================================
 //  spawnFoods – mix of 5 food types: banana, cheese, donut, milk, melon
 // ================================================================
-void _foodsystem::spawnFoods(int numFoods)
+void _foodsystem::spawnFoods(int numFoods, int level)
 {
     struct FoodType {
         std::string texture;
         float       size;
         int         id;
     };
-    std::vector<FoodType> foodTypes = {
-        { "images/banana.png", 5.0f, 0 },
-        { "images/cheese.png", 5.5f, 1 },
-        { "images/donut.png",  4.8f, 2 },
-        { "images/milk.png",   6.5f, 3 },
-        { "images/wmelon.png", 6.5f, 4 }
-    };
+
+    std::vector<FoodType> foodTypes;
+
+    switch(level)
+    {
+        // ========================================================
+        // LEVEL 1 — Kitchen
+        // ========================================================
+        case 1:
+            foodTypes = {
+                { "images/cheese.png",  5.5f, 0 },
+                { "images/milk.png",    6.5f, 1 },
+                { "images/bread.png",   6.0f, 2 },
+                { "images/banana.png",  5.0f, 3 }
+            };
+            break;
+
+        // ========================================================
+        // LEVEL 2 — Club
+        // ========================================================
+        case 2:
+            foodTypes = {
+                { "images/wine.png",    6.0f, 0 },
+                { "images/cherry.png",  4.5f, 1 },
+                { "images/lime.png",    4.5f, 2 },
+                { "images/mojito.png",  6.0f, 3 }
+            };
+            break;
+
+        // ========================================================
+        // LEVEL 3 — Beach
+        // ========================================================
+        case 3:
+            foodTypes = {
+                { "images/wmelon.png",   6.5f, 0 },
+                { "images/water.png",    5.5f, 1 },
+                { "images/chips.png",    5.5f, 2 },
+                { "images/icecream.png", 6.0f, 3 }
+            };
+            break;
+    }
+
 
     float skyBottomY = sky->pos.y - sky->scale.y * 0.5f;
     float floorY     = skyBottomY + 1.0f;
     float halfX      = sky->scale.x * 0.45f;
     float halfZ      = sky->scale.z * 0.45f;
 
+    // ── Mouse hole exclusion zone ────────────────────────────────
+    // The hole is at approximately (-halfX_scene*0.60, -halfZ_scene+6).
+    // _scene tells us where it is, but here we recompute from the
+    // skybox geometry to keep this self-contained.  Food must spawn
+    // OUTSIDE a generous safety zone (hole radius + magnet radius
+    // + buffer) so the magnet doesn't suck a freshly-dropped food
+    // into the hole before the player has even moved.
+    float holeX = -(sky->scale.x * 0.5f) * 0.60f;
+    float holeZ = -(sky->scale.z * 0.5f) + 6.0f;
+    float holeRadius   = 6.0f;
+    float magnetRadius = 18.0f;
+    float exclusion    = holeRadius + magnetRadius + 6.0f;  // ~30 units
+
     for (int i = 0; i < numFoods; i++) {
         FoodType type = foodTypes[rand() % foodTypes.size()];
 
         _food* newFood = new _food(type.texture, type.size, type.id);
-        newFood->physics.pos.x = ((rand()%200)/100.0f - 1.0f) * halfX;
-        newFood->physics.pos.z = ((rand()%200)/100.0f - 1.0f) * halfZ;
+
+        // Reroll spawn position until it's clear of the hole zone
+        // (capped at 30 attempts to avoid infinite loops on tiny maps).
+        float fx, fz;
+        for (int attempt = 0; attempt < 30; attempt++) {
+            fx = ((rand()%200)/100.0f - 1.0f) * halfX;
+            fz = ((rand()%200)/100.0f - 1.0f) * halfZ;
+            float dx = fx - holeX, dz = fz - holeZ;
+            if (dx*dx + dz*dz >= exclusion * exclusion) break;
+        }
+        newFood->physics.pos.x = fx;
+        newFood->physics.pos.z = fz;
         newFood->physics.pos.y = floorY + 30.0f + (rand()%40);  // stagger drop
         foods.push_back(newFood);
     }
@@ -156,6 +214,8 @@ void _foodsystem::update(float dt, float floorY)
 void _foodsystem::checkFoodInHole(glm::vec3 holePos, float holeRadius,
                                    int& score, float dt)
 {
+    foodCollectedThisFrame = 0;
+
     // ── Magnet effect: pull food toward the hole ─────────────────
     // Subtle pull so food has to be actively pushed close to the hole
     // before it gets sucked in.  No more grabbing food across the room.
@@ -172,7 +232,7 @@ void _foodsystem::checkFoodInHole(glm::vec3 holePos, float holeRadius,
             foods.erase(foods.begin() + i);
             delete food;
             score += 10;          // 10 points per food
-            std::cout << "SCORE: " << score << std::endl;
+            foodCollectedThisFrame++;
             continue;
         }
         i++;
@@ -192,14 +252,22 @@ void _foodsystem::checkFoodInHole(glm::vec3 holePos, float holeRadius,
 //  handlePlayerCollisions – player pushes food, walls bounce food
 // ================================================================
 void _foodsystem::handlePlayerCollisions(_player* player,
-                                          glm::vec3 playerMoveDir)
+                                          glm::vec3 playerMoveDir,
+                                          bool playerIsDashing)
 {
+    megaHitsThisFrame = 0;
+
     // Note: walls deliberately do NOT block food.  Player movement is
     // clamped against walls in the scene; food can drift past the
     // visual wall boundary without getting stuck against it.  This
     // lets the player always reach food and push it back toward the
     // hole without the food locking up against an edge.
     float playerRadius = 2.0f;
+
+    // Normal push strength vs. dashing-into-food MEGA-HIT strength.
+    // Dashing sends the food flying about 5x harder so it can shoot
+    // across the room toward the hole.
+    float pushStrength = playerIsDashing ? 38.0f : 7.5f;
 
     for (auto& food : foods) {
         float foodR = food->collisionRadius;
@@ -215,9 +283,13 @@ void _foodsystem::handlePlayerCollisions(_player* player,
             food->physics.pos.x += nx * overlap;
             food->physics.pos.z += nz * overlap;
 
-            float pushStrength = 7.5f;
             food->physics.velocity.x += playerMoveDir.x * pushStrength;
             food->physics.velocity.z += playerMoveDir.z * pushStrength;
+
+            // MEGA-HIT: dash + collision = celebrated, scored, and animated
+            if (playerIsDashing) {
+                megaHitsThisFrame++;
+            }
         }
     }
 }

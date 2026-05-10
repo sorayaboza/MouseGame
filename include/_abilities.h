@@ -35,6 +35,19 @@ public:
     bool isDashing();
     bool isFartAnimating();
 
+    // Wipe all transient effects (active fart clouds, dash velocity,
+    // cooldowns).  Called between levels and after death so effects
+    // from the previous run don't carry over.
+    void clearAll();
+
+    // ── Edge-trigger flags for sound effects ─────────────────
+    // Set to true the frame Dash/Fart fires; the scene reads them
+    // each frame to play the SFX, then resets to false via the
+    // consumeSfxFlags() helper.
+    bool dashJustTriggered;
+    bool fartJustTriggered;
+    void consumeSfxFlags() { dashJustTriggered = false; fartJustTriggered = false; }
+
 private:
     // INPUT STATE
     bool spaceWasDown;
