@@ -6,7 +6,7 @@ Game made by **Soraya Boza** and **Harshil Taunk**.
 
 #### Soraya Boza
 * **Roles**: Team lead, programmer, artist, tester, game designer.
-* **Team leaf / Game designer**: Made all creative decisions (except for the idea to add an ability).
+* **Team lead / Game designer**: Made all creative decisions (except for the idea to add an ability).
 * **Programmer**: Worked on the skybox, player movement, abilities, food system, terrain system, and camera movement.
 * **Artist**: Created all of the assets for this game, except for the music (royalty free), models (which I got from [here](https://www.quaddicted.com/files/idgames2/planetquake/q2pmp/), the Tygris, Nightcrawler, and Awolf) and the watermelon, cheese, donut, and milk pngs.
 * **Tester**: Tested the game at each stage.
