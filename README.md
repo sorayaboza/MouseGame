@@ -9,8 +9,10 @@ Game made by **Soraya Boza** and **Harshil Taunk**.
 * **Tester**: Tested the game at each stage.
 
 #### Harshil Taunk
-* **Roles**:
-* Worked on the game state, saving/loading system, and enemy movement.
+* **Roles**: Programmer, Debugger and Tester
+* Programmer: Worked on the game state machine, save/load system, enemy AI (patrol/chase/distracted states with vision cones), the in-game HUD, different level/ pause screens, sound system integration, mouse-look camera, the MEGA-HIT mechanic.
+* Debugger: Fixed UI fading between levels, score bug, ENTER-lag between levels, stacked music tracks on state transitions, and the hole alignment with the art.
+* Tester: Playtested levels while debugging to catch collision, spawn, and alignment issues.
 
 ### Setup for running the game
 
